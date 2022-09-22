@@ -1,0 +1,12 @@
+from bot import AlisUnnamedBot
+
+# Constants for custom emojis
+TICK = "<:green_tick:1019746883742216233>"
+WARNING = "<:yellow_warning:1019746887970062386>"
+CROSS = "<:red_cross:1019746886799855626>"
+LOADING = "<a:loading:1019746885768056862>"
+ARROW_RIGHT = "<a:right_arrow:1021393428841504768>"
+
+
+def setup(bot: AlisUnnamedBot, **kwargs):
+    bot.logger.info("Loading Emojis extension...")

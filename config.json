@@ -1,0 +1,11 @@
+{
+  "logger": "alis_unnamed_bot",
+  "log_file_path": "logs/bot.log",
+  "extensions_root": "extensions",
+  "owner_id": 444547651388833812,
+  "colour": 3167990,
+  "currency_name": "money",
+  "currency_symbol": "£",
+  "new_user_wallet": 250,
+  "new_user_bank_cap": 10000
+}
