@@ -89,6 +89,14 @@ class MiscCog(AlisUnnamedBotCog):
 
         await inter.edit_original_message(embed=embed)
 
+    @slash_command(description="Shows useful information about each feature of the bot.")
+    async def help(self, inter: Interaction):
+        embed = Embed()
+        embed.title = "**Help**"
+        embed.colour = self.bot.config.get("colour")
+        embed.description = f"Help stuff here..."
+        await inter.send(embed=embed)
+
 
 def setup(bot: AlisUnnamedBot, **kwargs):
     bot.logger.info(f"Loading Misc extension...")

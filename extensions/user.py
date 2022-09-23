@@ -30,7 +30,7 @@ class UserCog(AlisUnnamedBotCog):
                           description="You may specify a user to see their profile."
                       )):
         if not await self.database.user_exists(inter.user.id):
-            return await self.utils.welcome_new_user(inter, inter.user)
+            return await self.utils.add_and_welcome_new_user(inter, inter.user)
         elif not user:
             user = inter.user
         elif user.bot:
@@ -57,7 +57,7 @@ class UserCog(AlisUnnamedBotCog):
                         description="You may specify a user to see their level."
                     )):
         if not await self.database.user_exists(inter.user.id):
-            return await self.utils.welcome_new_user(inter, inter.user)
+            return await self.utils.add_and_welcome_new_user(inter, inter.user)
         elif not user:
             user = inter.user
         elif user.bot:

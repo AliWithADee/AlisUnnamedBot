@@ -1,7 +1,7 @@
 from decimal import Decimal, DecimalException, ROUND_HALF_UP
 from typing import Optional
 
-from nextcord import Colour, Interaction, User, Embed
+from nextcord import Colour, Interaction, User, Embed, ApplicationCommandType, SlashApplicationCommand
 from nextcord.ext.commands import Cog
 
 from bot import AlisUnnamedBot
@@ -69,13 +69,18 @@ class UtilsCog(AlisUnnamedBotCog):
     def to_currency_str(self, value) -> str:
         return self.currency_symbol + "{:,}".format(self.to_currency_value(value))
 
-    # Adds user to the database and sends a welcome message as a response to the interaction
-    async def welcome_new_user(self, inter: Interaction, user: User):
+    # Adds a new user to the database and sends a welcome message as a response to the interaction
+    async def add_and_welcome_new_user(self, inter: Interaction, user: User):
         wallet, bank_capacity = await self.database.add_user(user)
+
+        help_command: Optional[SlashApplicationCommand] = self.bot.get_application_command_from_signature(
+            "help", ApplicationCommandType.chat_input, None)
+
         embed = Embed()
         embed.title = "**Hold up there bucko!**"
         embed.colour = self.bot.config.get("colour")
-        embed.description = f"Before you run that `/{inter.application_command.name}` command, I don't believe we've met before, have we?\n" \
+        embed.description = f"Before you run that `/{inter.application_command.name}` command, " \
+                            f"I don't believe we've met before, have we?\n" \
                             f"What do they call you then stranger?\n\n" \
                             f"{user.mention} is it? Well hello there, nice to meet you!\n" \
                             f"Let me help you get started. Here take this...\n\n" \
@@ -83,7 +88,7 @@ class UtilsCog(AlisUnnamedBotCog):
                             f"`{self.to_currency_str(wallet)}`!\n" \
                             f"- You received a {BANK} **Bank Account** with a capacity of " \
                             f"`{self.to_currency_str(bank_capacity)}`!\n\n" \
-                            f"**Consider using the `/help` command for more information.**"
+                            f"**Consider using the {help_command.get_mention()} command for more information.**"
         await inter.send(embed=embed)
 
 

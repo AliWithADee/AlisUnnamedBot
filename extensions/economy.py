@@ -71,7 +71,7 @@ class EconomyCog(AlisUnnamedBotCog):
                           description="You may specify a user to see their balance."
                       )):
         if not await self.database.user_exists(inter.user.id):
-            return await self.utils.welcome_new_user(inter, inter.user)
+            return await self.utils.add_and_welcome_new_user(inter, inter.user)
         elif not user:
             user = inter.user
         elif user.bot:
@@ -99,7 +99,7 @@ class EconomyCog(AlisUnnamedBotCog):
                        )):
         user = inter.user
         if not await self.database.user_exists(user.id):
-            return await self.utils.welcome_new_user(inter, user)
+            return await self.utils.add_and_welcome_new_user(inter, user)
         balance = await self.database.get_user_balance(user)
         bank = balance.get("Bank")
         bank_capacity = balance.get("BankCap")
@@ -141,7 +141,7 @@ class EconomyCog(AlisUnnamedBotCog):
                       )):
         user = inter.user
         if not await self.database.user_exists(user.id):
-            return await self.utils.welcome_new_user(inter, user)
+            return await self.utils.add_and_welcome_new_user(inter, user)
         balance = await self.database.get_user_balance(user)
         wallet = balance.get("Wallet")
         bank = balance.get("Bank")
@@ -191,7 +191,7 @@ class EconomyCog(AlisUnnamedBotCog):
                   )):
         user = inter.user
         if not await self.database.user_exists(user.id):
-            return await self.utils.welcome_new_user(inter, user)
+            return await self.utils.add_and_welcome_new_user(inter, user)
         elif recipient.bot:
             raise CannotPayBotError
         elif recipient.id == user.id:
