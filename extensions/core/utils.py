@@ -1,11 +1,12 @@
 from decimal import Decimal, DecimalException, ROUND_HALF_UP
 from typing import Optional
 
-from nextcord import Colour
+from nextcord import Colour, Interaction, User, Embed
 from nextcord.ext.commands import Cog
 
 from bot import AlisUnnamedBot
 from extensions.core.database import DatabaseCog
+from extensions.core.emojis import WALLET, BANK
 
 
 # Base class for certain cogs that need access to the Utils and Database cogs
@@ -27,9 +28,9 @@ class EmbedError(Exception):
 
 
 # Cog that provides helper functions for other cogs to use
-class UtilsCog(Cog):
+class UtilsCog(AlisUnnamedBotCog):
     def __init__(self, bot: AlisUnnamedBot):
-        self.bot = bot
+        super().__init__(bot)
         self.currency_symbol = bot.config.get("currency_symbol")
 
     # Returns whether value can be successfully converted to a Decimal
@@ -67,6 +68,23 @@ class UtilsCog(Cog):
     # else returns "0" as a string with currency formatting applied
     def to_currency_str(self, value) -> str:
         return self.currency_symbol + "{:,}".format(self.to_currency_value(value))
+
+    # Adds user to the database and sends a welcome message as a response to the interaction
+    async def welcome_new_user(self, inter: Interaction, user: User):
+        wallet, bank_capacity = await self.database.add_user(user)
+        embed = Embed()
+        embed.title = "**Hold up there bucko!**"
+        embed.colour = self.bot.config.get("colour")
+        embed.description = f"Before you run that `/{inter.application_command.name}` command, I don't believe we've met before, have we?\n" \
+                            f"What do they call you then stranger?\n\n" \
+                            f"{user.mention} is it? Well hello there, nice to meet you!\n" \
+                            f"Let me help you get started. Here take this...\n\n" \
+                            f"- You received a {WALLET} **Wallet** containing " \
+                            f"`{self.to_currency_str(wallet)}`!\n" \
+                            f"- You received a {BANK} **Bank Account** with a capacity of " \
+                            f"`{self.to_currency_str(bank_capacity)}`!\n\n" \
+                            f"**Consider using the `/help` command for more information.**"
+        await inter.send(embed=embed)
 
 
 def setup(bot: AlisUnnamedBot, **kwargs):

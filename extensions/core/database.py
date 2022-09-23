@@ -7,7 +7,7 @@ from nextcord.user import User
 from bot import AlisUnnamedBot
 
 
-# Cog to handle database querying and manipulation
+# Cog to handle database queries and manipulation
 class DatabaseCog(Cog):
     def __init__(self, bot: AlisUnnamedBot, pool: Pool):
         self.bot = bot
@@ -21,17 +21,18 @@ class DatabaseCog(Cog):
             """)
             return record == 1
 
-    async def add_new_user(self, user: User):
+    async def add_user(self, user: User) -> [int, int]:
+        wallet = self.bot.config.get("new_user_wallet", 0)
+        bank_capacity = self.bot.config.get("new_user_bank_cap", 0)
         async with self.pool.acquire() as conn:
             cursor: Cursor = await conn.cursor()
             await cursor.execute(f"""
-                INSERT INTO User (UserID, Wallet, BankCap) VALUES
-                ({user.id}, {self.bot.config.get("new_user_wallet", 0)}, {self.bot.config.get("new_user_bank_cap", 0)})
-            """)
+                        INSERT INTO User (UserID, Wallet, BankCap) VALUES
+                        ({user.id}, {wallet}, {bank_capacity})
+                    """)
+        return wallet, bank_capacity
 
     async def get_user_profile(self, user: User) -> dict:
-        if not await self.user_exists(user.id):
-            await self.add_new_user(user)
         async with self.pool.acquire() as conn:
             cursor: Cursor = await conn.cursor(DictCursor)
             await cursor.execute(f"""
@@ -41,8 +42,6 @@ class DatabaseCog(Cog):
         return {} if result is None else result
 
     async def get_user_level_data(self, user: User) -> dict:
-        if not await self.user_exists(user.id):
-            await self.add_new_user(user)
         async with self.pool.acquire() as conn:
             cursor: Cursor = await conn.cursor(DictCursor)
             await cursor.execute(f"""
@@ -52,8 +51,6 @@ class DatabaseCog(Cog):
         return {} if result is None else result
 
     async def get_user_balance(self, user: User) -> dict:
-        if not await self.user_exists(user.id):
-            await self.add_new_user(user)
         async with self.pool.acquire() as conn:
             cursor: Cursor = await conn.cursor(DictCursor)
             await cursor.execute(f"""
@@ -63,19 +60,15 @@ class DatabaseCog(Cog):
         return {} if result is None else result
 
     async def get_user_wallet(self, user: User) -> Decimal:
-        if not await self.user_exists(user.id):
-            await self.add_new_user(user)
         async with self.pool.acquire() as conn:
             cursor: Cursor = await conn.cursor(DictCursor)
             await cursor.execute(f"""
                 SELECT Wallet FROM User WHERE UserID = {user.id}
             """)
             result = await cursor.fetchone()
-        return {} if result is None else result.get("Wallet")
+        return Decimal("0") if result is None else result.get("Wallet")
 
     async def set_user_wallet(self, user: User, new_wallet: Decimal):
-        if not await self.user_exists(user.id):
-            await self.add_new_user(user)
         async with self.pool.acquire() as conn:
             cursor: Cursor = await conn.cursor(DictCursor)
             await cursor.execute(f"""
@@ -83,8 +76,6 @@ class DatabaseCog(Cog):
             """)
 
     async def set_user_bank(self, user: User, new_bank: Decimal):
-        if not await self.user_exists(user.id):
-            await self.add_new_user(user)
         async with self.pool.acquire() as conn:
             cursor: Cursor = await conn.cursor(DictCursor)
             await cursor.execute(f"""

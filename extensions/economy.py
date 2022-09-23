@@ -5,6 +5,7 @@ from nextcord import slash_command, Interaction, Embed, User, SlashOption, Colou
 from bot import AlisUnnamedBot
 from extensions.core.emojis import ARROW_RIGHT
 from extensions.core.utils import AlisUnnamedBotCog, EmbedError
+from extensions.user import UserDoesNotExistError
 
 AMOUNT_DESCRIPTION = 'Any decimal, such as "1.20", a percentage, such as "50%", or "all" to specify all.'
 PLEASE_PAY_US = "**:money_with_wings: #PayTheRobots :money_with_wings:**"
@@ -69,10 +70,14 @@ class EconomyCog(AlisUnnamedBotCog):
                           required=False,
                           description="You may specify a user to see their balance."
                       )):
-        if not user:
+        if not await self.database.user_exists(inter.user.id):
+            return await self.utils.welcome_new_user(inter, inter.user)
+        elif not user:
             user = inter.user
-        if user.bot:
+        elif user.bot:
             raise BotsHaveNoBalanceError(self.currency_name)
+        elif not await self.database.user_exists(user.id):
+            raise UserDoesNotExistError(user)
         balance = await self.database.get_user_balance(user)
         wallet = balance.get("Wallet")
         bank = balance.get("Bank")
@@ -92,7 +97,10 @@ class EconomyCog(AlisUnnamedBotCog):
                        amount: str = SlashOption(
                            description=AMOUNT_DESCRIPTION
                        )):
-        balance = await self.database.get_user_balance(inter.user)
+        user = inter.user
+        if not await self.database.user_exists(user.id):
+            return await self.utils.welcome_new_user(inter, user)
+        balance = await self.database.get_user_balance(user)
         bank = balance.get("Bank")
         bank_capacity = balance.get("BankCap")
 
@@ -114,8 +122,8 @@ class EconomyCog(AlisUnnamedBotCog):
         wallet = balance.get("Wallet")
         new_wallet = wallet + withdrew
         new_bank = bank - withdrew
-        await self.database.set_user_wallet(inter.user, new_wallet)
-        await self.database.set_user_bank(inter.user, new_bank)
+        await self.database.set_user_wallet(user, new_wallet)
+        await self.database.set_user_bank(user, new_bank)
 
         embed = Embed()
         embed.title = "**Bank Withdrawal**"
@@ -131,7 +139,10 @@ class EconomyCog(AlisUnnamedBotCog):
                       amount: str = SlashOption(
                           description=AMOUNT_DESCRIPTION
                       )):
-        balance = await self.database.get_user_balance(inter.user)
+        user = inter.user
+        if not await self.database.user_exists(user.id):
+            return await self.utils.welcome_new_user(inter, user)
+        balance = await self.database.get_user_balance(user)
         wallet = balance.get("Wallet")
         bank = balance.get("Bank")
         bank_capacity = balance.get("BankCap")
@@ -157,8 +168,8 @@ class EconomyCog(AlisUnnamedBotCog):
 
         new_wallet = wallet - deposited
         new_bank = bank + deposited
-        await self.database.set_user_wallet(inter.user, new_wallet)
-        await self.database.set_user_bank(inter.user, new_bank)
+        await self.database.set_user_wallet(user, new_wallet)
+        await self.database.set_user_bank(user, new_bank)
 
         embed = Embed()
         embed.title = "**Bank Deposit**"
@@ -178,11 +189,16 @@ class EconomyCog(AlisUnnamedBotCog):
                   amount: str = SlashOption(
                       description=AMOUNT_DESCRIPTION
                   )):
-        if recipient.bot:
+        user = inter.user
+        if not await self.database.user_exists(user.id):
+            return await self.utils.welcome_new_user(inter, user)
+        elif recipient.bot:
             raise CannotPayBotError
-        elif recipient.id == inter.user.id:
+        elif recipient.id == user.id:
             raise CannotPayYourselfError
-        user_wallet = await self.database.get_user_wallet(inter.user)
+        elif not await self.database.user_exists(recipient.id):
+            raise UserDoesNotExistError(recipient)
+        user_wallet = await self.database.get_user_wallet(user)
 
         if amount.lower() == "all":
             transferred = user_wallet
@@ -203,14 +219,14 @@ class EconomyCog(AlisUnnamedBotCog):
         new_recipient_wallet = recipient_wallet + transferred
         new_user_wallet = user_wallet - transferred
         await self.database.set_user_wallet(recipient, new_recipient_wallet)
-        await self.database.set_user_wallet(inter.user, new_user_wallet)
+        await self.database.set_user_wallet(user, new_user_wallet)
 
         embed = Embed()
         embed.title = f"**Payment**"
         embed.colour = Colour.green()
-        embed.description = f"**{inter.user.name} {ARROW_RIGHT} `{self.utils.to_currency_str(transferred)}` " \
+        embed.description = f"**{user.name} {ARROW_RIGHT} `{self.utils.to_currency_str(transferred)}` " \
                             f"{ARROW_RIGHT} {recipient.name}**\n\n" \
-                            f"**{inter.user.mention}'s Wallet: `{self.utils.to_currency_str(new_user_wallet)}`**\n" \
+                            f"**{user.mention}'s Wallet: `{self.utils.to_currency_str(new_user_wallet)}`**\n" \
                             f"**{recipient.mention}'s Wallet: `{self.utils.to_currency_str(new_recipient_wallet)}`**"
         await inter.send(embed=embed)
 

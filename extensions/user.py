@@ -12,6 +12,13 @@ class BotsDoNotHaveProfilesError(EmbedError):
                          f"Bots don't have user profiles")
 
 
+class UserDoesNotExistError(EmbedError):
+    def __init__(self, user: User):
+        super().__init__("**Invalid Argument**",
+                         f"Who the hell is {user.mention}? I don't recognise that user in my database!\n\n"
+                         f"*Get your friend to use the bot, in order to interact with them...*")
+
+
 class UserCog(AlisUnnamedBotCog):
     def __init__(self, bot: AlisUnnamedBot):
         super().__init__(bot)
@@ -22,10 +29,14 @@ class UserCog(AlisUnnamedBotCog):
                           required=False,
                           description="You may specify a user to see their profile."
                       )):
-        if not user:
+        if not await self.database.user_exists(inter.user.id):
+            return await self.utils.welcome_new_user(inter, inter.user)
+        elif not user:
             user = inter.user
-        if user.bot:
+        elif user.bot:
             raise BotsDoNotHaveProfilesError
+        elif not await self.database.user_exists(user.id):
+            raise UserDoesNotExistError(user)
         profile = await self.database.get_user_profile(user)
         level = profile.get("Level")
         wallet = profile.get("Wallet")
@@ -44,10 +55,14 @@ class UserCog(AlisUnnamedBotCog):
                         required=False,
                         description="You may specify a user to see their level."
                     )):
-        if not user:
+        if not await self.database.user_exists(inter.user.id):
+            return await self.utils.welcome_new_user(inter, inter.user)
+        elif not user:
             user = inter.user
-        if user.bot:
+        elif user.bot:
             raise BotsDoNotHaveProfilesError
+        elif not await self.database.user_exists(user.id):
+            raise UserDoesNotExistError(user)
         level_data = await self.database.get_user_level_data(user)
         level = level_data.get("Level")
         exp = level_data.get("Exp")
