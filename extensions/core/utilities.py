@@ -1,4 +1,4 @@
-from decimal import Decimal, DecimalException
+from decimal import Decimal, DecimalException, ROUND_HALF_UP
 from typing import Optional
 
 from nextcord import Colour
@@ -30,6 +30,7 @@ class EmbedError(Exception):
 class UtilsCog(Cog):
     def __init__(self, bot: AlisUnnamedBot):
         self.bot = bot
+        self.currency_symbol = bot.config.get("currency_symbol")
 
     # Returns whether value can be successfully converted to a Decimal
     @staticmethod
@@ -55,6 +56,17 @@ class UtilsCog(Cog):
                 if UtilsCog.is_decimal(value.replace("%", "")):
                     return True
         return False
+
+    # Returns value as a Decimal with "0.01" as its exponent, if value can be converted to a Decimal,
+    # else returns "0" as a Decimal with "0.01" as its exponent
+    @staticmethod
+    def to_currency_value(value) -> Decimal:
+        return UtilsCog.to_decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    # Returns value as a string with currency formatting applied, if value can be converted to a Decimal,
+    # else returns "0" as a string with currency formatting applied
+    def to_currency_str(self, value) -> str:
+        return self.currency_symbol + "{:,}".format(self.to_currency_value(value))
 
 
 def setup(bot: AlisUnnamedBot, **kwargs):

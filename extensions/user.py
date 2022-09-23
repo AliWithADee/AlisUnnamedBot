@@ -4,7 +4,6 @@ from nextcord import slash_command, Interaction, User, SlashOption, Embed
 
 from bot import AlisUnnamedBot
 from extensions.core.utilities import AlisUnnamedBotCog, EmbedError
-from extensions.economy import EconomyCog
 
 
 class BotsDoNotHaveProfilesError(EmbedError):
@@ -26,8 +25,6 @@ class UserCog(AlisUnnamedBotCog):
         if not user:
             user = inter.user
         if user.bot:
-        economy: Optional[EconomyCog] = self.bot.get_cog("EconomyCog")
-
             raise BotsDoNotHaveProfilesError
         profile = await self.database.get_user_profile(user)
         level = profile.get("Level")
@@ -38,7 +35,7 @@ class UserCog(AlisUnnamedBotCog):
         embed.set_author(name=f"{user.name}'s Profile", icon_url=user.avatar.url)
         embed.colour = self.bot.config.get("colour")
         embed.description = f"**Level: `{level}`**\n" \
-                            f"**Total Balance: `{economy.to_currency_str(wallet + bank)}`**"
+                            f"**Total Balance: `{self.utils.to_currency_str(wallet + bank)}`**"
         await inter.send(embed=embed)
 
     @slash_command(description="View your own, or another user's, level.")

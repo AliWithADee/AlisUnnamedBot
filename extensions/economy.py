@@ -1,11 +1,10 @@
-from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
 from nextcord import slash_command, Interaction, Embed, User, SlashOption, Colour
 
 from bot import AlisUnnamedBot
-from extensions.core.utilities import AlisUnnamedBotCog, EmbedError
 from extensions.core.emojis import ARROW_RIGHT
+from extensions.core.utilities import AlisUnnamedBotCog, EmbedError
 
 AMOUNT_DESCRIPTION = 'Any decimal, such as "1.20", a percentage, such as "50%", or "all" to specify all.'
 PLEASE_PAY_US = "**:money_with_wings: #PayTheRobots :money_with_wings:**"
@@ -63,17 +62,6 @@ class EconomyCog(AlisUnnamedBotCog):
     def __init__(self, bot: AlisUnnamedBot):
         super().__init__(bot)
         self.currency_name = bot.config.get("currency_name")
-        self.currency_symbol = bot.config.get("currency_symbol")
-
-    # Returns value as a Decimal with "0.01" as its exponent, if value can be converted to a Decimal,
-    # else returns "0" as a Decimal with "0.01" as its exponent
-    def to_currency_value(self, value) -> Decimal:
-        return self.utils.to_decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-    # Returns value as a string with currency formatting applied, if value can be converted to a Decimal,
-    # else returns "0" as a string with currency formatting applied
-    def to_currency_str(self, value) -> str:
-        return self.currency_symbol + "{:,}".format(self.to_currency_value(value))
 
     @slash_command(description="Check your, or another user's, balance.")
     async def balance(self, inter: Interaction,
@@ -93,9 +81,10 @@ class EconomyCog(AlisUnnamedBotCog):
         embed = Embed()
         embed.set_author(name=f"{user.name}'s Balance", icon_url=user.avatar.url)
         embed.colour = self.bot.config.get("colour")
-        embed.description = f"**Wallet: `{self.to_currency_str(wallet)}`**\n" \
-                            f"**Bank: `{self.to_currency_str(bank)}` / `{self.to_currency_str(bank_capacity)}`**\n" \
-                            f"**Total: `{self.to_currency_str(wallet + bank)}`**"
+        embed.description = f"**Wallet: `{self.utils.to_currency_str(wallet)}`**\n" \
+                            f"**Bank: `{self.utils.to_currency_str(bank)}` / " \
+                            f"`{self.utils.to_currency_str(bank_capacity)}`**\n" \
+                            f"**Total: `{self.utils.to_currency_str(wallet + bank)}`**"
         await inter.send(embed=embed)
 
     @slash_command(description=f"Transfer currency from your bank to your wallet.")
@@ -110,17 +99,17 @@ class EconomyCog(AlisUnnamedBotCog):
         if amount.lower() == "all":
             withdrew = bank
         elif self.utils.is_decimal(amount):
-            withdrew = self.to_currency_value(amount)
+            withdrew = self.utils.to_currency_value(amount)
         elif self.utils.is_percentage(amount):
             multiplier = self.utils.to_decimal(amount.replace("%", "")) / 100
-            withdrew = self.to_currency_value(bank * multiplier)
+            withdrew = self.utils.to_currency_value(bank * multiplier)
         else:
             raise InvalidCurrencyAmountError(amount)
 
         if withdrew < 0:
             raise InvalidCurrencyAmountError(amount)
         if withdrew > bank:
-            raise InsufficientBankFundsError(self.to_currency_str(withdrew))
+            raise InsufficientBankFundsError(self.utils.to_currency_str(withdrew))
 
         wallet = balance.get("Wallet")
         new_wallet = wallet + withdrew
@@ -131,9 +120,10 @@ class EconomyCog(AlisUnnamedBotCog):
         embed = Embed()
         embed.title = "**Bank Withdrawal**"
         embed.colour = Colour.blue()
-        embed.description = f"**You withdrew `{self.to_currency_str(withdrew)}`**\n\n" \
-                            f"**Wallet: `{self.to_currency_str(new_wallet)}`**\n" \
-                            f"**Bank: `{self.to_currency_str(new_bank)}` / `{self.to_currency_str(bank_capacity)}`**"
+        embed.description = f"**You withdrew `{self.utils.to_currency_str(withdrew)}`**\n\n" \
+                            f"**Wallet: `{self.utils.to_currency_str(new_wallet)}`**\n" \
+                            f"**Bank: `{self.utils.to_currency_str(new_bank)}` / " \
+                            f"`{self.utils.to_currency_str(bank_capacity)}`**"
         await inter.send(embed=embed)
 
     @slash_command(description=f"Transfer currency from your wallet to your bank.")
@@ -150,20 +140,20 @@ class EconomyCog(AlisUnnamedBotCog):
         if amount.lower() == "all":
             deposited = min(wallet, bank_space)
         elif self.utils.is_decimal(amount):
-            deposited = self.to_currency_value(amount)
+            deposited = self.utils.to_currency_value(amount)
         elif self.utils.is_percentage(amount):
             multiplier = self.utils.to_decimal(amount.replace("%", "")) / 100
-            deposited = self.to_currency_value(wallet * multiplier)
+            deposited = self.utils.to_currency_value(wallet * multiplier)
         else:
             raise InvalidCurrencyAmountError(amount)
 
         if deposited < 0:
             raise InvalidCurrencyAmountError(amount)
         if deposited > wallet:
-            raise InsufficientWalletFundsError(self.to_currency_str(deposited))
+            raise InsufficientWalletFundsError(self.utils.to_currency_str(deposited))
 
         if deposited > bank_space:
-            raise InsufficientBankSpaceError(self.to_currency_str(deposited))
+            raise InsufficientBankSpaceError(self.utils.to_currency_str(deposited))
 
         new_wallet = wallet - deposited
         new_bank = bank + deposited
@@ -173,9 +163,10 @@ class EconomyCog(AlisUnnamedBotCog):
         embed = Embed()
         embed.title = "**Bank Deposit**"
         embed.colour = Colour.gold()
-        embed.description = f"**You deposited `{self.to_currency_str(deposited)}`**\n\n" \
-                            f"**Wallet: `{self.to_currency_str(new_wallet)}`**\n" \
-                            f"**Bank: `{self.to_currency_str(new_bank)}` / `{self.to_currency_str(bank_capacity)}`**"
+        embed.description = f"**You deposited `{self.utils.to_currency_str(deposited)}`**\n\n" \
+                            f"**Wallet: `{self.utils.to_currency_str(new_wallet)}`**\n" \
+                            f"**Bank: `{self.utils.to_currency_str(new_bank)}` / " \
+                            f"`{self.utils.to_currency_str(bank_capacity)}`**"
         await inter.send(embed=embed)
 
     @slash_command(description=f"Transfer currency from your wallet to another user's wallet.")
@@ -196,17 +187,17 @@ class EconomyCog(AlisUnnamedBotCog):
         if amount.lower() == "all":
             transferred = user_wallet
         elif self.utils.is_decimal(amount):
-            transferred = self.to_currency_value(amount)
+            transferred = self.utils.to_currency_value(amount)
         elif self.utils.is_percentage(amount):
             multiplier = self.utils.to_decimal(amount.replace("%", "")) / 100
-            transferred = self.to_currency_value(user_wallet * multiplier)
+            transferred = self.utils.to_currency_value(user_wallet * multiplier)
         else:
             raise InvalidCurrencyAmountError(amount)
 
         if transferred < 0:
             raise InvalidCurrencyAmountError(amount)
         if transferred > user_wallet:
-            raise InsufficientWalletFundsError(self.to_currency_str(transferred))
+            raise InsufficientWalletFundsError(self.utils.to_currency_str(transferred))
 
         recipient_wallet = await self.database.get_user_wallet(recipient)
         new_recipient_wallet = recipient_wallet + transferred
@@ -217,10 +208,10 @@ class EconomyCog(AlisUnnamedBotCog):
         embed = Embed()
         embed.title = f"**Payment**"
         embed.colour = Colour.green()
-        embed.description = f"**{inter.user.name} {ARROW_RIGHT} `{self.to_currency_str(transferred)}` {ARROW_RIGHT} " \
-                            f"{recipient.name}**\n\n" \
-                            f"**{inter.user.mention}'s Wallet: `{self.to_currency_str(new_user_wallet)}`**\n" \
-                            f"**{recipient.mention}'s Wallet: `{self.to_currency_str(new_recipient_wallet)}`**"
+        embed.description = f"**{inter.user.name} {ARROW_RIGHT} `{self.utils.to_currency_str(transferred)}` " \
+                            f"{ARROW_RIGHT} {recipient.name}**\n\n" \
+                            f"**{inter.user.mention}'s Wallet: `{self.utils.to_currency_str(new_user_wallet)}`**\n" \
+                            f"**{recipient.mention}'s Wallet: `{self.utils.to_currency_str(new_recipient_wallet)}`**"
         await inter.send(embed=embed)
 
 
