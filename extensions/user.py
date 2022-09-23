@@ -7,7 +7,7 @@ from extensions.core.utilities import AlisUnnamedBotCog, EmbedError
 from extensions.economy import EconomyCog
 
 
-class BotsDoNotHaveProfiles(EmbedError):
+class BotsDoNotHaveProfilesError(EmbedError):
     def __init__(self):
         super().__init__("**Invalid Argument**",
                          f"Bots don't have user profiles")
@@ -26,9 +26,9 @@ class UserCog(AlisUnnamedBotCog):
         if not user:
             user = inter.user
         if user.bot:
-            raise BotsDoNotHaveProfiles
         economy: Optional[EconomyCog] = self.bot.get_cog("EconomyCog")
 
+            raise BotsDoNotHaveProfilesError
         profile = await self.database.get_user_profile(user)
         level = profile.get("Level")
         wallet = profile.get("Wallet")
@@ -50,7 +50,7 @@ class UserCog(AlisUnnamedBotCog):
         if not user:
             user = inter.user
         if user.bot:
-            raise BotsDoNotHaveProfiles
+            raise BotsDoNotHaveProfilesError
         level_data = await self.database.get_user_level_data(user)
         level = level_data.get("Level")
         exp = level_data.get("Exp")
