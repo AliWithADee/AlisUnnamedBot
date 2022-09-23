@@ -127,7 +127,7 @@ class EconomyCog(AlisUnnamedBotCog):
 
         embed = Embed()
         embed.title = "**Bank Withdrawal**"
-        embed.colour = Colour.blue()
+        embed.colour = Colour.dark_gold()
         embed.description = f"**You withdrew `{self.utils.to_currency_str(withdrew)}`**\n\n" \
                             f"**Wallet: `{self.utils.to_currency_str(new_wallet)}`**\n" \
                             f"**Bank: `{self.utils.to_currency_str(new_bank)}` / " \
@@ -173,7 +173,7 @@ class EconomyCog(AlisUnnamedBotCog):
 
         embed = Embed()
         embed.title = "**Bank Deposit**"
-        embed.colour = Colour.gold()
+        embed.colour = Colour.dark_green()
         embed.description = f"**You deposited `{self.utils.to_currency_str(deposited)}`**\n\n" \
                             f"**Wallet: `{self.utils.to_currency_str(new_wallet)}`**\n" \
                             f"**Bank: `{self.utils.to_currency_str(new_bank)}` / " \
