@@ -45,6 +45,7 @@ class UserCog(AlisUnnamedBotCog):
         embed = Embed()
         embed.set_author(name=f"{user.name}'s Profile", icon_url=user.avatar.url)
         embed.colour = self.bot.config.get("colour")
+        embed.set_thumbnail(user.avatar.url)
         embed.description = f"**Level: `{level}`**\n" \
                             f"**Total Balance: `{self.utils.to_currency_str(wallet + bank)}`**"
         await inter.send(embed=embed)
