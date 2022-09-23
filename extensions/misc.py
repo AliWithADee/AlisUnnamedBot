@@ -2,7 +2,7 @@ from nextcord import slash_command, Interaction, Embed, Colour
 from nextcord.ext.application_checks import is_owner
 
 from bot import AlisUnnamedBot
-from extensions.core.utilities import AlisUnnamedBotCog
+from extensions.core.utils import AlisUnnamedBotCog
 from extensions.core.emojis import TICK, WARNING, LOADING
 
 

@@ -70,5 +70,5 @@ class UtilsCog(Cog):
 
 
 def setup(bot: AlisUnnamedBot, **kwargs):
-    bot.logger.info("Loading Utilities extension...")
+    bot.logger.info("Loading Utils extension...")
     bot.add_cog(UtilsCog(bot))

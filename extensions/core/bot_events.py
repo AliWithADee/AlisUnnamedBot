@@ -3,7 +3,7 @@ from nextcord.ext.application_checks import ApplicationNotOwner
 from nextcord.ext.commands import Cog
 
 from bot import AlisUnnamedBot
-from extensions.core.utilities import EmbedError
+from extensions.core.utils import EmbedError
 from extensions.core.emojis import CROSS
 
 

@@ -3,7 +3,7 @@ from typing import Optional
 from nextcord import slash_command, Interaction, User, SlashOption, Embed
 
 from bot import AlisUnnamedBot
-from extensions.core.utilities import AlisUnnamedBotCog, EmbedError
+from extensions.core.utils import AlisUnnamedBotCog, EmbedError
 
 
 class BotsDoNotHaveProfilesError(EmbedError):
