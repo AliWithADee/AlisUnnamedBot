@@ -1,6 +1,8 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+from os import environ
 
-from aiomysql import Cursor, DictCursor, Pool
+from bson.decimal128 import Decimal128
+from motor.motor_asyncio import AsyncIOMotorClient
 from nextcord.ext.commands import Cog
 from nextcord.user import User
 
@@ -9,80 +11,112 @@ from bot import AlisUnnamedBot
 
 # Cog to handle database queries and manipulation
 class DatabaseCog(Cog):
-    def __init__(self, bot: AlisUnnamedBot, pool: Pool):
+    def __init__(self, bot: AlisUnnamedBot, client: AsyncIOMotorClient):
         self.bot = bot
-        self.pool = pool
+        self.client = client
+        self.database = client[environ["DB_DATABASE"]]
 
-    async def user_exists(self, user_id: int) -> bool:
-        async with self.pool.acquire() as conn:
-            cursor: Cursor = await conn.cursor()
-            record = await cursor.execute(f"""
-                SELECT 1 FROM User WHERE UserID = {user_id}
-            """)
-            return record == 1
+    @staticmethod
+    def convert_decimal128_fields_to_decimal(obj):
+        if obj is None: return
+
+        if isinstance(obj, dict):
+            for key, value in list(obj.items()):
+                obj[key] = DatabaseCog.convert_decimal128_fields_to_decimal(value)
+        elif isinstance(obj, list):
+            new_obj = []
+            for value in obj:
+                new_obj.append(DatabaseCog.convert_decimal128_fields_to_decimal(value))
+            obj = new_obj
+        elif isinstance(obj, Decimal128):
+            obj = obj.to_decimal()
+
+        return obj
+
+    async def user_exists(self, user: User) -> bool:
+        return await self.database.users.find_one({"userID": user.id}) is not None
 
     async def add_user(self, user: User) -> [int, int]:
         wallet = self.bot.config.get("new_user_wallet", 0)
         bank_capacity = self.bot.config.get("new_user_bank_cap", 0)
-        async with self.pool.acquire() as conn:
-            cursor: Cursor = await conn.cursor()
-            await cursor.execute(f"""
-                        INSERT INTO User (UserID, Wallet, BankCap) VALUES
-                        ({user.id}, {wallet}, {bank_capacity})
-                    """)
+        await self.database.users.insert_one(
+            {
+                "userID": user.id,
+                "level": 1,
+                "exp": 0,
+                "wallet": Decimal128(Decimal(str(wallet)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "bank": Decimal128("0.00"),
+                "bankCap": Decimal128(Decimal(str(bank_capacity)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+            }
+        )
         return wallet, bank_capacity
 
     async def get_user_profile(self, user: User) -> dict:
-        async with self.pool.acquire() as conn:
-            cursor: Cursor = await conn.cursor(DictCursor)
-            await cursor.execute(f"""
-                SELECT Level, Wallet, Bank FROM User WHERE UserID = {user.id}
-            """)
-            result = await cursor.fetchone()
-        return {} if result is None else result
+        result = await self.database.users.find_one(
+            {
+                "userID": user.id
+            },
+            {
+                "_id": 0,
+                "level": 1,
+                "wallet": 1,
+                "bank": 1
+            }
+        )
+        return self.convert_decimal128_fields_to_decimal(result)
 
     async def get_user_level_data(self, user: User) -> dict:
-        async with self.pool.acquire() as conn:
-            cursor: Cursor = await conn.cursor(DictCursor)
-            await cursor.execute(f"""
-                SELECT Level, Exp FROM User WHERE UserID = {user.id}
-            """)
-            result = await cursor.fetchone()
-        return {} if result is None else result
+        return await self.database.users.find_one(
+            {
+                "userID": user.id
+            },
+            {
+                "_id": 0,
+                "level": 1,
+                "exp": 1
+            }
+        )
 
     async def get_user_balance(self, user: User) -> dict:
-        async with self.pool.acquire() as conn:
-            cursor: Cursor = await conn.cursor(DictCursor)
-            await cursor.execute(f"""
-                SELECT Wallet, Bank, BankCap FROM User WHERE UserID = {user.id}
-            """)
-            result = await cursor.fetchone()
-        return {} if result is None else result
-
-    async def get_user_wallet(self, user: User) -> Decimal:
-        async with self.pool.acquire() as conn:
-            cursor: Cursor = await conn.cursor(DictCursor)
-            await cursor.execute(f"""
-                SELECT Wallet FROM User WHERE UserID = {user.id}
-            """)
-            result = await cursor.fetchone()
-        return Decimal("0") if result is None else result.get("Wallet")
+        result = await self.database.users.find_one(
+            {
+                "userID": user.id
+            },
+            {
+                "_id": 0,
+                "wallet": 1,
+                "bank": 1,
+                "bankCap": 1
+            }
+        )
+        return self.convert_decimal128_fields_to_decimal(result)
 
     async def set_user_wallet(self, user: User, new_wallet: Decimal):
-        async with self.pool.acquire() as conn:
-            cursor: Cursor = await conn.cursor(DictCursor)
-            await cursor.execute(f"""
-                UPDATE User SET Wallet = {new_wallet} WHERE UserID = {user.id}
-            """)
+        return await self.database.users.update_one(
+            {
+                "userID": user.id
+            },
+            {
+                "$set": {
+                    "wallet": Decimal128(new_wallet)
+                }
+            }
+        )
 
     async def set_user_bank(self, user: User, new_bank: Decimal):
-        async with self.pool.acquire() as conn:
-            cursor: Cursor = await conn.cursor(DictCursor)
-            await cursor.execute(f"""
-                UPDATE User SET Bank = {new_bank} WHERE UserID = {user.id}
-            """)
+        return await self.database.users.update_one(
+            {
+                "userID": user.id
+            },
+            {
+                "$set": {
+                    "bank": Decimal128(new_bank)
+                }
+            }
+        )
 
 
-def setup(bot: AlisUnnamedBot, pool: Pool):
+def setup(bot: AlisUnnamedBot):
     bot.logger.info("Loading Database extension...")
-    bot.add_cog(DatabaseCog(bot, pool))
+    client = AsyncIOMotorClient(environ["DB_HOST"], int(environ["DB_PORT"]), io_loop=bot.loop)
+    bot.add_cog(DatabaseCog(bot, client))

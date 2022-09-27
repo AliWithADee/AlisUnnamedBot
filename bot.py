@@ -3,8 +3,8 @@ import logging
 import os
 from os import environ
 
-from aiomysql import Pool, create_pool
 from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
 from nextcord import Intents, Interaction
 from nextcord.ext.commands import Bot
 from nextcord.ext.commands.errors import ExtensionError
@@ -78,27 +78,15 @@ class AlisUnnamedBot(Bot):
             self.logger.error("'extensions_root' is not a directory")
             return []
 
-        # Close database connection pool, before unloading the database cog
+        # Close MongoDB client, before unloading the database cog
         database = self.get_cog("DatabaseCog")
-        if database and hasattr(database, "pool") and isinstance(database.pool, Pool):
-            self.logger.info("Closing database connection pool...")
-            database.pool.close()
-            await database.pool.wait_closed()
+        if database and hasattr(database, "client") and isinstance(database.client, AsyncIOMotorClient):
+            self.logger.info("Closing MongoDB client...")
+            database.client.close()
 
         # Unload currently loaded extensions
         for extension in list(self.extensions):
             self.unload_extension(extension)
-
-        # Create new connection pool to be passed to the database extension
-        pool: Pool = await create_pool(
-            host=environ["DB_HOST"],
-            port=int(environ["DB_PORT"]),
-            user=environ["DB_USER"],
-            password=environ["DB_PASSWORD"],
-            db=environ["DB_DATABASE"],
-            autocommit=True,
-            loop=self.loop
-        )
 
         # Load all extensions and create a list of failed extensions
         failed_extensions = []
@@ -110,7 +98,7 @@ class AlisUnnamedBot(Bot):
                 name = python_file.replace(".py", "")
                 extension = f"{path}.{name}"
                 try:
-                    self.load_extension(extension, extras={"pool": pool})
+                    self.load_extension(extension)
                 except ExtensionError as error:
                     failed_extensions.append(extension)
                     self.logger.error(error)

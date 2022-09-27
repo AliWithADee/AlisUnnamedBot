@@ -29,18 +29,18 @@ class UserCog(AlisUnnamedBotCog):
                           required=False,
                           description="You may specify a user to see their profile."
                       )):
-        if not await self.database.user_exists(inter.user.id):
+        if not await self.database.user_exists(inter.user):
             return await self.utils.add_and_welcome_new_user(inter, inter.user)
         elif not user:
             user = inter.user
         elif user.bot:
             raise BotsDoNotHaveProfilesError
-        elif not await self.database.user_exists(user.id):
+        elif not await self.database.user_exists(user):
             raise UserDoesNotExistError(user)
         profile = await self.database.get_user_profile(user)
-        level = profile.get("Level")
-        wallet = profile.get("Wallet")
-        bank = profile.get("Bank")
+        level = profile.get("level")
+        wallet = profile.get("wallet")
+        bank = profile.get("bank")
 
         embed = Embed()
         embed.set_author(name=f"{user.name}'s Profile", icon_url=user.avatar.url)
@@ -56,17 +56,17 @@ class UserCog(AlisUnnamedBotCog):
                         required=False,
                         description="You may specify a user to see their level."
                     )):
-        if not await self.database.user_exists(inter.user.id):
+        if not await self.database.user_exists(inter.user):
             return await self.utils.add_and_welcome_new_user(inter, inter.user)
         elif not user:
             user = inter.user
         elif user.bot:
             raise BotsDoNotHaveProfilesError
-        elif not await self.database.user_exists(user.id):
+        elif not await self.database.user_exists(user):
             raise UserDoesNotExistError(user)
         level_data = await self.database.get_user_level_data(user)
-        level = level_data.get("Level")
-        exp = level_data.get("Exp")
+        level = level_data.get("level")
+        exp = level_data.get("exp")
 
         embed = Embed()
         embed.set_author(name=f"{user.name}'s Level", icon_url=user.avatar.url)

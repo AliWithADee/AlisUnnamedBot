@@ -39,12 +39,12 @@ class InsufficientFundsError(EmbedError):
 
 class InsufficientWalletFundsError(InsufficientFundsError):
     def __init__(self, required_funds: str):
-        super().__init__("Wallet", required_funds)
+        super().__init__("wallet", required_funds)
 
 
 class InsufficientBankFundsError(InsufficientFundsError):
     def __init__(self, required_funds: str):
-        super().__init__("Bank", required_funds)
+        super().__init__("bank", required_funds)
 
 
 class InsufficientBankSpaceError(EmbedError):
@@ -70,18 +70,18 @@ class EconomyCog(AlisUnnamedBotCog):
                           required=False,
                           description="You may specify a user to see their balance."
                       )):
-        if not await self.database.user_exists(inter.user.id):
+        if not await self.database.user_exists(inter.user):
             return await self.utils.add_and_welcome_new_user(inter, inter.user)
         elif not user:
             user = inter.user
         elif user.bot:
             raise BotsHaveNoBalanceError(self.currency_name)
-        elif not await self.database.user_exists(user.id):
+        elif not await self.database.user_exists(user):
             raise UserDoesNotExistError(user)
         balance = await self.database.get_user_balance(user)
-        wallet = balance.get("Wallet")
-        bank = balance.get("Bank")
-        bank_capacity = balance.get("BankCap")
+        wallet = balance.get("wallet")
+        bank = balance.get("bank")
+        bank_capacity = balance.get("bankCap")
 
         embed = Embed()
         embed.set_author(name=f"{user.name}'s Balance", icon_url=user.avatar.url)
@@ -98,11 +98,11 @@ class EconomyCog(AlisUnnamedBotCog):
                            description=AMOUNT_DESCRIPTION
                        )):
         user = inter.user
-        if not await self.database.user_exists(user.id):
+        if not await self.database.user_exists(user):
             return await self.utils.add_and_welcome_new_user(inter, user)
         balance = await self.database.get_user_balance(user)
-        bank = balance.get("Bank")
-        bank_capacity = balance.get("BankCap")
+        bank = balance.get("bank")
+        bank_capacity = balance.get("bankCap")
 
         if amount.lower() == "all":
             withdrew = bank
@@ -119,7 +119,7 @@ class EconomyCog(AlisUnnamedBotCog):
         if withdrew > bank:
             raise InsufficientBankFundsError(self.utils.to_currency_str(withdrew))
 
-        wallet = balance.get("Wallet")
+        wallet = balance.get("wallet")
         new_wallet = wallet + withdrew
         new_bank = bank - withdrew
         await self.database.set_user_wallet(user, new_wallet)
@@ -140,12 +140,12 @@ class EconomyCog(AlisUnnamedBotCog):
                           description=AMOUNT_DESCRIPTION
                       )):
         user = inter.user
-        if not await self.database.user_exists(user.id):
+        if not await self.database.user_exists(user):
             return await self.utils.add_and_welcome_new_user(inter, user)
         balance = await self.database.get_user_balance(user)
-        wallet = balance.get("Wallet")
-        bank = balance.get("Bank")
-        bank_capacity = balance.get("BankCap")
+        wallet = balance.get("wallet")
+        bank = balance.get("bank")
+        bank_capacity = balance.get("bankCap")
         bank_space = bank_capacity - bank
 
         if amount.lower() == "all":
@@ -190,15 +190,16 @@ class EconomyCog(AlisUnnamedBotCog):
                       description=AMOUNT_DESCRIPTION
                   )):
         user = inter.user
-        if not await self.database.user_exists(user.id):
+        if not await self.database.user_exists(user):
             return await self.utils.add_and_welcome_new_user(inter, user)
         elif recipient.bot:
             raise CannotPayBotError
         elif recipient.id == user.id:
             raise CannotPayYourselfError
-        elif not await self.database.user_exists(recipient.id):
+        elif not await self.database.user_exists(recipient):
             raise UserDoesNotExistError(recipient)
-        user_wallet = await self.database.get_user_wallet(user)
+        user_balance = await self.database.get_user_balance(user)
+        user_wallet = user_balance.get("wallet")
 
         if amount.lower() == "all":
             transferred = user_wallet
@@ -215,7 +216,8 @@ class EconomyCog(AlisUnnamedBotCog):
         if transferred > user_wallet:
             raise InsufficientWalletFundsError(self.utils.to_currency_str(transferred))
 
-        recipient_wallet = await self.database.get_user_wallet(recipient)
+        recipient_balance = await self.database.get_user_balance(recipient)
+        recipient_wallet = recipient_balance.get("wallet")
         new_recipient_wallet = recipient_wallet + transferred
         new_user_wallet = user_wallet - transferred
         await self.database.set_user_wallet(recipient, new_recipient_wallet)
