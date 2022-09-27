@@ -34,14 +34,14 @@ class DatabaseCog(Cog):
         return obj
 
     async def user_exists(self, user: User) -> bool:
-        return await self.database.users.find_one({"userID": user.id}) is not None
+        return await self.database.users.find_one({"_id": user.id}) is not None
 
     async def add_user(self, user: User) -> [int, int]:
         wallet = self.bot.config.get("new_user_wallet", 0)
         bank_capacity = self.bot.config.get("new_user_bank_cap", 0)
         await self.database.users.insert_one(
             {
-                "userID": user.id,
+                "_id": user.id,
                 "level": 1,
                 "exp": 0,
                 "wallet": Decimal128(Decimal(str(wallet)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
@@ -54,7 +54,7 @@ class DatabaseCog(Cog):
     async def get_user_profile(self, user: User) -> dict:
         result = await self.database.users.find_one(
             {
-                "userID": user.id
+                "_id": user.id
             },
             {
                 "_id": 0,
@@ -68,7 +68,7 @@ class DatabaseCog(Cog):
     async def get_user_level_data(self, user: User) -> dict:
         return await self.database.users.find_one(
             {
-                "userID": user.id
+                "_id": user.id
             },
             {
                 "_id": 0,
@@ -80,7 +80,7 @@ class DatabaseCog(Cog):
     async def get_user_balance(self, user: User) -> dict:
         result = await self.database.users.find_one(
             {
-                "userID": user.id
+                "_id": user.id
             },
             {
                 "_id": 0,
@@ -94,7 +94,7 @@ class DatabaseCog(Cog):
     async def set_user_wallet(self, user: User, new_wallet: Decimal):
         return await self.database.users.update_one(
             {
-                "userID": user.id
+                "_id": user.id
             },
             {
                 "$set": {
@@ -106,7 +106,7 @@ class DatabaseCog(Cog):
     async def set_user_bank(self, user: User, new_bank: Decimal):
         return await self.database.users.update_one(
             {
-                "userID": user.id
+                "_id": user.id
             },
             {
                 "$set": {
