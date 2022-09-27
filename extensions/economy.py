@@ -39,12 +39,12 @@ class InsufficientFundsError(EmbedError):
 
 class InsufficientWalletFundsError(InsufficientFundsError):
     def __init__(self, required_funds: str):
-        super().__init__("wallet", required_funds)
+        super().__init__("Wallet", required_funds)
 
 
 class InsufficientBankFundsError(InsufficientFundsError):
     def __init__(self, required_funds: str):
-        super().__init__("bank", required_funds)
+        super().__init__("Bank", required_funds)
 
 
 class InsufficientBankSpaceError(EmbedError):
