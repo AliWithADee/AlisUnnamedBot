@@ -3,7 +3,7 @@ from typing import Optional
 from nextcord import slash_command, Interaction, Embed, User, SlashOption, Colour
 
 from bot import AlisUnnamedBot
-from extensions.core.emojis import ARROW_RIGHT
+from extensions.core.emojis import ARROW_RIGHT, WALLET, BANK, MONEY_BAG
 from extensions.core.utils import AlisUnnamedBotCog, EmbedError
 from extensions.user import UserDoesNotExistError
 
@@ -86,10 +86,10 @@ class EconomyCog(AlisUnnamedBotCog):
         embed = Embed()
         embed.set_author(name=f"{user.name}'s Balance", icon_url=user.avatar.url)
         embed.colour = self.bot.config.get("colour")
-        embed.description = f"**Wallet: `{self.utils.to_currency_str(wallet)}`**\n" \
-                            f"**Bank: `{self.utils.to_currency_str(bank)}` / " \
+        embed.description = f"{WALLET} **Wallet: `{self.utils.to_currency_str(wallet)}`**\n" \
+                            f"{BANK} **Bank: `{self.utils.to_currency_str(bank)}` / " \
                             f"`{self.utils.to_currency_str(bank_capacity)}`**\n" \
-                            f"**Total: `{self.utils.to_currency_str(wallet + bank)}`**"
+                            f"{MONEY_BAG} **Total: `{self.utils.to_currency_str(wallet + bank)}`**"
         await inter.send(embed=embed)
 
     @slash_command(description=f"Transfer currency from your bank to your wallet.")
@@ -129,8 +129,8 @@ class EconomyCog(AlisUnnamedBotCog):
         embed.title = "**Bank Withdrawal**"
         embed.colour = Colour.dark_gold()
         embed.description = f"**You withdrew `{self.utils.to_currency_str(withdrew)}`**\n\n" \
-                            f"**Wallet: `{self.utils.to_currency_str(new_wallet)}`**\n" \
-                            f"**Bank: `{self.utils.to_currency_str(new_bank)}` / " \
+                            f"{WALLET} **Wallet: `{self.utils.to_currency_str(new_wallet)}`**\n" \
+                            f"{BANK} **Bank: `{self.utils.to_currency_str(new_bank)}` / " \
                             f"`{self.utils.to_currency_str(bank_capacity)}`**"
         await inter.send(embed=embed)
 
@@ -175,8 +175,8 @@ class EconomyCog(AlisUnnamedBotCog):
         embed.title = "**Bank Deposit**"
         embed.colour = Colour.dark_green()
         embed.description = f"**You deposited `{self.utils.to_currency_str(deposited)}`**\n\n" \
-                            f"**Wallet: `{self.utils.to_currency_str(new_wallet)}`**\n" \
-                            f"**Bank: `{self.utils.to_currency_str(new_bank)}` / " \
+                            f"{WALLET} **Wallet: `{self.utils.to_currency_str(new_wallet)}`**\n" \
+                            f"{BANK} **Bank: `{self.utils.to_currency_str(new_bank)}` / " \
                             f"`{self.utils.to_currency_str(bank_capacity)}`**"
         await inter.send(embed=embed)
 
@@ -228,8 +228,8 @@ class EconomyCog(AlisUnnamedBotCog):
         embed.colour = Colour.green()
         embed.description = f"**{user.name} {ARROW_RIGHT} `{self.utils.to_currency_str(transferred)}` " \
                             f"{ARROW_RIGHT} {recipient.name}**\n\n" \
-                            f"**{user.mention}'s Wallet: `{self.utils.to_currency_str(new_user_wallet)}`**\n" \
-                            f"**{recipient.mention}'s Wallet: `{self.utils.to_currency_str(new_recipient_wallet)}`**"
+                            f"**{user.mention}'s {WALLET} Wallet: `{self.utils.to_currency_str(new_user_wallet)}`**\n" \
+                            f"**{recipient.mention}'s {WALLET} Wallet: `{self.utils.to_currency_str(new_recipient_wallet)}`**"
         await inter.send(embed=embed)
 
 

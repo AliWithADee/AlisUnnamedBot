@@ -3,6 +3,7 @@ from typing import Optional
 from nextcord import slash_command, Interaction, User, SlashOption, Embed
 
 from bot import AlisUnnamedBot
+from extensions.core.emojis import MONEY_BAG, LEVEL
 from extensions.core.utils import AlisUnnamedBotCog, EmbedError
 
 
@@ -27,7 +28,7 @@ class UserCog(AlisUnnamedBotCog):
     async def profile(self, inter: Interaction,
                       user: Optional[User] = SlashOption(
                           required=False,
-                          description="You may specify a user to see their profile."
+                          description="You may specify a user to view their profile."
                       )):
         if not await self.database.user_exists(inter.user):
             return await self.utils.add_and_welcome_new_user(inter, inter.user)
@@ -46,15 +47,15 @@ class UserCog(AlisUnnamedBotCog):
         embed.set_author(name=f"{user.name}'s Profile", icon_url=user.avatar.url)
         embed.colour = self.bot.config.get("colour")
         embed.set_thumbnail(user.avatar.url)
-        embed.description = f"**Level: `{level}`**\n" \
-                            f"**Total Balance: `{self.utils.to_currency_str(wallet + bank)}`**"
+        embed.description = f"{LEVEL} **Level: `{level}`**\n\n" \
+                            f"{MONEY_BAG} **Balance: `{self.utils.to_currency_str(wallet + bank)}`**"
         await inter.send(embed=embed)
 
     @slash_command(description="View your own, or another user's, level.")
     async def level(self, inter: Interaction,
                     user: Optional[User] = SlashOption(
                         required=False,
-                        description="You may specify a user to see their level."
+                        description="You may specify a user to view their level."
                     )):
         if not await self.database.user_exists(inter.user):
             return await self.utils.add_and_welcome_new_user(inter, inter.user)
