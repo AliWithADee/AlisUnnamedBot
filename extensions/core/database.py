@@ -1,12 +1,18 @@
 from decimal import Decimal, ROUND_HALF_UP
 from os import environ
 
-from bson.decimal128 import Decimal128
+from bson import ObjectId, Decimal128
 from motor.motor_asyncio import AsyncIOMotorClient
 from nextcord.ext.commands import Cog
 from nextcord.user import User
 
 from bot import AlisUnnamedBot
+
+# Inventory locations
+HOME: int = 0
+BAG: int = 1
+
+UNKNOWN = "UNKNOWN"
 
 
 # Cog to handle database queries and manipulation
@@ -14,7 +20,7 @@ class DatabaseCog(Cog):
     def __init__(self, bot: AlisUnnamedBot, client: AsyncIOMotorClient):
         self.bot = bot
         self.client = client
-        self.database = client[environ["DB_DATABASE"]]
+        self.db = client[environ["DB_DATABASE"]]
 
     @staticmethod
     def convert_decimal128_fields_to_decimal(obj):
@@ -34,12 +40,12 @@ class DatabaseCog(Cog):
         return obj
 
     async def user_exists(self, user: User) -> bool:
-        return await self.database.users.find_one({"_id": user.id}) is not None
+        return await self.db.users.find_one({"_id": user.id}) is not None
 
     async def add_user(self, user: User) -> [int, int]:
         wallet = self.bot.config.get("new_user_wallet", 0)
         bank_capacity = self.bot.config.get("new_user_bank_cap", 0)
-        await self.database.users.insert_one(
+        await self.db.users.insert_one(
             {
                 "_id": user.id,
                 "level": 1,
@@ -52,7 +58,7 @@ class DatabaseCog(Cog):
         return wallet, bank_capacity
 
     async def get_user_profile(self, user: User) -> dict:
-        result = await self.database.users.find_one(
+        result = await self.db.users.find_one(
             {
                 "_id": user.id
             },
@@ -66,7 +72,7 @@ class DatabaseCog(Cog):
         return self.convert_decimal128_fields_to_decimal(result)
 
     async def get_user_level_data(self, user: User) -> dict:
-        return await self.database.users.find_one(
+        return await self.db.users.find_one(
             {
                 "_id": user.id
             },
@@ -78,7 +84,7 @@ class DatabaseCog(Cog):
         )
 
     async def get_user_balance(self, user: User) -> dict:
-        result = await self.database.users.find_one(
+        result = await self.db.users.find_one(
             {
                 "_id": user.id
             },
@@ -92,7 +98,7 @@ class DatabaseCog(Cog):
         return self.convert_decimal128_fields_to_decimal(result)
 
     async def set_user_wallet(self, user: User, new_wallet: Decimal):
-        return await self.database.users.update_one(
+        return await self.db.users.update_one(
             {
                 "_id": user.id
             },
@@ -104,7 +110,7 @@ class DatabaseCog(Cog):
         )
 
     async def set_user_bank(self, user: User, new_bank: Decimal):
-        return await self.database.users.update_one(
+        return await self.db.users.update_one(
             {
                 "_id": user.id
             },
@@ -114,6 +120,221 @@ class DatabaseCog(Cog):
                 }
             }
         )
+
+    async def get_item_id(self, item_name: str):
+        result = await self.db.items.find_one({"single": item_name}, {"_id": 1})
+        if result is None: return
+        return result.get("_id")
+
+    async def item_exists(self, item_id: ObjectId) -> bool:
+        return await self.db.items.find_one({"_id": item_id}) is not None
+
+    async def item_is_unique(self, item_id: ObjectId) -> bool:
+        if not await self.item_exists(item_id): return False
+        result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "isUnique": 1})
+        return result.get("isUnique")
+
+    async def get_item_single_name(self, item_id: ObjectId) -> str:
+        if not await self.item_exists(item_id): return UNKNOWN
+        result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "single": 1})
+        return result.get("single")
+
+    async def get_item_plural_name(self, item_id: ObjectId) -> str:
+        if not await self.item_exists(item_id): return UNKNOWN
+        result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "plural": 1})
+        return result.get("plural")
+
+    async def user_has_item(self, user: User, item_id: ObjectId, location: int = HOME) -> bool:
+        return await self.db.userItems.find_one(
+            {
+                "userId": user.id,
+                "itemId": item_id,
+                "location": location
+            }
+        ) is not None
+
+    async def add_user_item(self, user: User, item_id: ObjectId, amount: int = 1, location: int = HOME):
+        if amount < 1:
+            amount = 1
+        if await self.item_is_unique(item_id):
+            item = {
+                "userId": user.id,
+                "itemId": item_id,
+                "location": location
+            }
+            items = [item.copy() for _ in range(amount)]
+            return await self.db.userItems.insert_many(items)
+        elif await self.user_has_item(user, item_id, location):
+            return await self.db.userItems.update_one(
+                {
+                    "userId": user.id,
+                    "itemId": item_id,
+                    "location": location
+                },
+                {
+                    "$inc": {
+                        "quantity": amount
+                    }
+                }
+            )
+        elif await self.item_exists(item_id):
+            return await self.db.userItems.insert_one(
+                {
+                    "userId": user.id,
+                    "itemId": item_id,
+                    "location": location,
+                    "quantity": amount
+                }
+            )
+
+    async def remove_user_item(self, user: User, item_id: ObjectId, amount: int = 1, location: int = HOME) -> bool:
+        if await self.item_is_unique(item_id):
+            return False
+        if not await self.user_has_item(user, item_id, location):
+            return False
+        if amount < 1:
+            amount = 1
+        result = await self.db.userItems.find_one(
+            {
+                "userId": user.id,
+                "itemId": item_id,
+                "location": location
+            },
+            {
+                "_id": 0,
+                "quantity": 1
+            }
+        )
+        quantity = result.get("quantity")
+        if quantity == amount:
+            return await self.db.userItems.delete_one(
+                {
+                    "userId": user.id,
+                    "itemId": item_id,
+                    "location": location
+                }
+            ) is not None
+        elif quantity > amount:
+            return await self.db.userItems.update_one(
+                {
+                    "userId": user.id,
+                    "itemId": item_id,
+                    "location": location
+                },
+                {
+                    "$inc": {
+                        "quantity": -amount
+                    }
+                }
+            ) is not None
+        return False
+
+    async def get_user_inventory(self, user: User, location: int = None):
+        if not location:
+            cursor = self.db.userItems.find(
+                {
+                    "userId": user.id
+                },
+                {
+                    "_id": 0,
+                    "userId": 0
+                }
+            )
+        else:
+            cursor = self.db.userItems.find(
+                {
+                    "userId": user.id,
+                    "location": location
+                },
+                {
+                    "_id": 0,
+                    "userId": 0
+                }
+            )
+        return [item async for item in cursor]
+
+    async def get_user_bag(self, user: User):
+        return await self.get_user_inventory(user, BAG)
+
+    # itemTypes = {
+    #     {
+    #         "_id": 54353,
+    #         "name": "Weapon",
+    #         "properties": {
+    #             "damage": 10
+    #         }
+    #     },
+    #     {
+    #         "_id": 98797,
+    #         "name": "Food",
+    #         "properties": {
+    #             "nutrition": 5
+    #         }
+    #     }
+    # }
+    #
+    # items = {
+    #     {
+    #         "_id": 3,
+    #         "itemTypeId": 98797,
+    #         "itemType": "Food",
+    #         "single": "Apple",
+    #         "plural": "Apples",
+    #         "properties": {
+    #             "nutrition": 5
+    #         },
+    #         "isUnique": False
+    #     },
+    #     {
+    #         "_id": 4,
+    #         "itemTypeId": 54353,
+    #         "itemType": "Weapon",
+    #         "single": "Wooden Sword",
+    #         "plural": "Wooden Swords",
+    #         "properties": {
+    #             "damage": 10
+    #         },
+    #         "isUnique": True
+    #     },
+    #     {
+    #         "_id": 5,
+    #         "itemTypeId": 54353,
+    #         "itemType": "Weapon",
+    #         "single": "Stone Sword",
+    #         "plural": "Stone Swords",
+    #         "properties": {
+    #             "damage": 15
+    #         },
+    #         "isUnique": True
+    #     }
+    # }
+    #
+    # users = {
+    #     "_id": 1
+    # }
+    #
+    # userItems = {
+    #     {
+    #         "_id": 1,
+    #         "userId": 1,
+    #         "itemId": 4,
+    #         "location": 0
+    #     },
+    #     {
+    #         "_id": 2,
+    #         "itemId": 3,
+    #         "itemTypeId": 98797,
+    #         "userId": 1,
+    #         "itemType": "Food",
+    #         "single": "Apple",
+    #         "plural": "Apples",
+    #         "properties": {
+    #             "nutrition": 5
+    #         },
+    #         "location": 0,
+    #         "quantity": 7
+    #     }
+    # }
 
 
 def setup(bot: AlisUnnamedBot):

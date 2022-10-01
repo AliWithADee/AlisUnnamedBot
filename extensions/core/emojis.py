@@ -10,6 +10,8 @@ LEVEL = "<:alis_unnamed_bot:1025815376036106422>"
 WALLET = "<:wallet:1022912717599801475>"
 BANK = ":bank:"
 MONEY_BAG = ":moneybag:"
+BACKPACK = ":school_satchel:"
+
 
 def setup(bot: AlisUnnamedBot, **kwargs):
     bot.logger.info("Loading Emojis extension...")
