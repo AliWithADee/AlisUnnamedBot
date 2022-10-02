@@ -92,6 +92,9 @@ class MiscCog(AlisUnnamedBotCog):
 
     @slash_command(description="Shows useful information about each feature of the bot.")
     async def help(self, inter: Interaction):
+
+        # TODO: Help command
+
         embed = Embed()
         embed.title = "**Help**"
         embed.colour = self.bot.config.get("colour")
