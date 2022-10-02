@@ -36,22 +36,23 @@ class InventoryCog(AlisUnnamedBotCog):
             raise UserDoesNotExistError(user)
         inventory = await self.database.get_user_inventory(user)
 
-        if inventory:
-            item_list = []
-            for item in inventory:
-                item_id = item.get("itemId")
-                location = item.get("location", HOME)
-                if await self.database.item_is_unique(item_id):
-                    quantity = 1
-                    name = item.get("name", await self.database.get_item_single_name(item_id))
-                else:
-                    quantity = item.get("quantity", 1)
-                    name = await self.database.get_item_single_name(item_id) if quantity == 1 \
-                        else await self.database.get_item_plural_name(item_id)
+        item_list = []
+        for item in inventory:
+            item_id = item.get("itemId")
+            location = item.get("location", HOME)
+            if await self.database.item_is_unique(item_id):
+                quantity = 1
+                name = item.get("name", await self.database.get_item_single_name(item_id))
+            else:
+                quantity = item.get("quantity", 0)
+                name = await self.database.get_item_single_name(item_id) if quantity == 1 \
+                    else await self.database.get_item_plural_name(item_id)
 
+            if quantity > 0:
                 item_desc = f"`{quantity}` **{name}**"
                 item_list.append(item_desc + f" {IN_BAG}" if location == BAG else item_desc)
 
+        if item_list:
             embed_desc = "- " + "\n- ".join(item_list)
         else:
             subject = "Your" if user.id == inter.user.id else f"{user.mention}'s"
@@ -78,24 +79,25 @@ class InventoryCog(AlisUnnamedBotCog):
             raise UserDoesNotExistError(user)
         bag = await self.database.get_user_bag(user)
 
-        if bag:
-            item_list = []
-            for item in bag:
-                item_id = item.get("itemId")
-                if await self.database.item_is_unique(item_id):
-                    quantity = 1
-                    name = item.get("name", await self.database.get_item_single_name(item_id))
-                else:
-                    quantity = item.get("quantity", 1)
-                    name = await self.database.get_item_single_name(item_id) if quantity == 1 \
-                        else await self.database.get_item_plural_name(item_id)
+        item_list = []
+        for item in bag:
+            item_id = item.get("itemId")
+            if await self.database.item_is_unique(item_id):
+                quantity = 1
+                name = item.get("name", await self.database.get_item_single_name(item_id))
+            else:
+                quantity = item.get("quantity", 0)
+                name = await self.database.get_item_single_name(item_id) if quantity == 1 \
+                    else await self.database.get_item_plural_name(item_id)
 
+            if quantity > 0:
                 item_list.append(f"`{quantity}` **{name}**")
 
+        if item_list:
             embed_desc = "- " + "\n- ".join(item_list)
         else:
             subject = "Your" if user.id == inter.user.id else f"{user.mention}'s"
-            embed_desc = f"*{subject} bag is empty*"
+            embed_desc = f"*{subject} {BACKPACK} **Bag** is empty*"
 
         embed = Embed()
         embed.set_author(name=f"{user.name}'s Bag", icon_url=user.avatar.url)
