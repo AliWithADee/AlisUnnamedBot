@@ -1,8 +1,10 @@
 from decimal import Decimal, ROUND_HALF_UP
 from os import environ
+from typing import Set
 
 from bson import ObjectId, Decimal128
 from motor.motor_asyncio import AsyncIOMotorClient
+from nextcord import BaseApplicationCommand
 from nextcord.ext.commands import Cog
 from nextcord.user import User
 
@@ -15,12 +17,16 @@ BAG: int = 1
 UNKNOWN = "UNKNOWN"
 
 
-# Cog to handle database queries and manipulation
+# Cog to handle database services
 class DatabaseCog(Cog):
     def __init__(self, bot: AlisUnnamedBot, client: AsyncIOMotorClient):
         self.bot = bot
         self.client = client
         self.db = client[environ["DB_DATABASE"]]
+
+    def close_connection(self):
+        self.bot.logger.info("Closing MongoDB client...")
+        self.client.close()
 
     @staticmethod
     def convert_decimal128_fields_to_decimal(obj):
@@ -38,6 +44,32 @@ class DatabaseCog(Cog):
             obj = obj.to_decimal()
 
         return obj
+
+    # Returns a dictionary mapping item names to item ids
+    async def get_item_option_choices(self) -> dict:
+        cursor = self.db.items.find(
+            {},
+            {
+                "_id": 1,
+                "single": 1  # Use the singular name, not the plural name
+            }
+        )
+        choices = {}
+        async for item in cursor:
+            item_id = item.get("_id")
+            item_name = item.get("single")
+            if item_name and item_id:
+                # ObjectId is not json serializable, so convert it using json_util.dumps()
+                choices[item_name] = str(item_id)
+        return choices
+
+    # Sets the choices for any ItemCommandOptions that appear in application commands
+    async def setup_item_command_option_choices(self):
+        commands: Set[BaseApplicationCommand] = self.bot.get_all_application_commands()
+        for command in commands:
+            for name, option in command.options.items():
+                if name == "item":
+                    option.choices = await self.get_item_option_choices()
 
     async def user_exists(self, user: User) -> bool:
         return await self.db.users.find_one({"_id": user.id}) is not None

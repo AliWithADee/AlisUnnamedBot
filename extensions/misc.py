@@ -2,8 +2,8 @@ from nextcord import slash_command, Interaction, Embed, Colour
 from nextcord.ext.application_checks import is_owner
 
 from bot import AlisUnnamedBot
-from extensions.core.utils import AlisUnnamedBotCog
 from extensions.core.emojis import TICK, WARNING, LOADING
+from extensions.core.utils import AlisUnnamedBotCog
 
 
 class MiscCog(AlisUnnamedBotCog):
@@ -62,7 +62,8 @@ class MiscCog(AlisUnnamedBotCog):
         try:
             await self.bot.sync_application_commands()
             commands_synced = True
-        except:
+        except Exception as error:
+            self.bot.logger.error(error)
             commands_synced = False
 
         # Embed: Syncing commands result

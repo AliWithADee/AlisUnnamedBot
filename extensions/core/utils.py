@@ -1,7 +1,7 @@
 from decimal import Decimal, DecimalException, ROUND_HALF_UP
 from typing import Optional
 
-from nextcord import Colour, Interaction, User, Embed, ApplicationCommandType, SlashApplicationCommand
+from nextcord import Colour, Interaction, User, Embed, ApplicationCommandType, SlashApplicationCommand, SlashOption
 from nextcord.ext.commands import Cog
 
 from bot import AlisUnnamedBot
@@ -25,6 +25,14 @@ class EmbedError(Exception):
         self.embed_desc = embed_desc
         self.embed_colour = embed_colour
         super().__init__(embed_desc.replace("*", "").replace("`", "'"))
+
+
+# Class that extends SlashOption and sets the "name" attribute to be "item"
+# so that this SlashOption is picked up by "setup_item_command_option_choices()" function in the database cog
+class ItemCommandOption(SlashOption):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = "item"
 
 
 # Cog that provides helper functions for other cogs to use

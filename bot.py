@@ -80,9 +80,8 @@ class AlisUnnamedBot(Bot):
 
         # Close MongoDB client, before unloading the database cog
         database = self.get_cog("DatabaseCog")
-        if database and hasattr(database, "client") and isinstance(database.client, AsyncIOMotorClient):
-            self.logger.info("Closing MongoDB client...")
-            database.client.close()
+        if database and hasattr(database, "close_connection"):
+            database.close_connection()
 
         # Unload currently loaded extensions
         for extension in list(self.extensions):
@@ -100,21 +99,28 @@ class AlisUnnamedBot(Bot):
                 try:
                     self.load_extension(extension)
                 except ExtensionError as error:
-                    failed_extensions.append(extension)
                     self.logger.error(error)
+                    failed_extensions.append(extension)
 
-        # Add UtilitiesCog and DatabaseCog to other cogs
+        utils = self.get_cog("UtilsCog")
+        database = self.get_cog("DatabaseCog")
+
+        # Add UtilitiesCog and DatabaseCog as attributes to other cogs
         for cog_name in self.cogs:
             cog = self.get_cog(cog_name)
             if hasattr(cog, "utils") and cog_name != "UtilsCog":
-                cog.utils = self.get_cog("UtilsCog")
+                cog.utils = utils
             if hasattr(cog, "database") and cog_name != "DatabaseCog":
-                cog.database = self.get_cog("DatabaseCog")
+                cog.database = database
+
+        # Set choices for any ItemCommandOptions that appear in application commands
+        if database and hasattr(database, "setup_item_command_option_choices"):
+            await database.setup_item_command_option_choices()
 
         return failed_extensions
 
     # Override default application command error handler
-    # This prevents handled errors being raised in the console
+    # This prevents handled errors being raised in the console, unless bot_events.py says it should
     async def on_application_command_error(self, inter: Interaction, error):
         pass
 
