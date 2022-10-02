@@ -44,6 +44,15 @@ class UtilsCog(AlisUnnamedBotCog):
         super().__init__(bot)
         self.currency_symbol = bot.config.get("currency_symbol")
 
+    # Returns whether value can be successfully converted to an integer
+    @staticmethod
+    def is_int(value) -> bool:
+        try:
+            int(value)
+            return True
+        except ValueError:
+            return False
+
     # Returns whether value can be successfully converted to a Decimal
     @staticmethod
     def is_decimal(value) -> bool:
