@@ -78,10 +78,10 @@ class AlisUnnamedBot(Bot):
             self.logger.error("'extensions_root' is not a directory")
             return []
 
-        # Close MongoDB client, before unloading the database cog
-        database = self.get_cog("DatabaseCog")
-        if database and hasattr(database, "close_connection"):
-            database.close_connection()
+        # Close MongoDB client, before unloading the old database cog
+        old_database = self.get_cog("DatabaseCog")
+        if old_database and hasattr(old_database, "close_connection"):
+            old_database.close_connection()
 
         # Unload currently loaded extensions
         for extension in list(self.extensions):
@@ -113,9 +113,9 @@ class AlisUnnamedBot(Bot):
             if hasattr(cog, "database") and cog_name != "DatabaseCog":
                 cog.database = database
 
-        # Set choices for any ItemCommandOptions that appear in application commands
-        if database and hasattr(database, "setup_item_command_option_choices"):
-            await database.setup_item_command_option_choices()
+        # Set choices for any ItemSlashOptions that appear in application commands
+        if database and hasattr(database, "setup_item_slash_option_choices"):
+            await database.setup_item_slash_option_choices()
 
         return failed_extensions
 

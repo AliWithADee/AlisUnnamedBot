@@ -28,8 +28,8 @@ class EmbedError(Exception):
 
 
 # Class that extends SlashOption and sets the "name" attribute to be "item"
-# so that this SlashOption is picked up by "setup_item_command_option_choices()" function in the database cog
-class ItemCommandOption(SlashOption):
+# so that this SlashOption is picked up by "setup_item_slash_option_choices()" function in the database cog
+class ItemSlashOption(SlashOption):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "item"

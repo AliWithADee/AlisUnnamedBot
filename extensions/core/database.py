@@ -46,7 +46,7 @@ class DatabaseCog(Cog):
         return obj
 
     # Returns a dictionary mapping item names to item ids
-    async def get_item_option_choices(self) -> dict:
+    async def get_item_choices(self) -> dict:
         cursor = self.db.items.find(
             {},
             {
@@ -59,17 +59,17 @@ class DatabaseCog(Cog):
             item_id = item.get("_id")
             item_name = item.get("single")
             if item_name and item_id:
-                # ObjectId is not json serializable, so convert it using json_util.dumps()
+                # ObjectId is not json serializable, so convert it to a string
                 choices[item_name] = str(item_id)
         return choices
 
-    # Sets the choices for any ItemCommandOptions that appear in application commands
-    async def setup_item_command_option_choices(self):
+    # Sets the choices for any ItemSlashOptions that appear in application commands
+    async def setup_item_slash_option_choices(self):
         commands: Set[BaseApplicationCommand] = self.bot.get_all_application_commands()
         for command in commands:
             for name, option in command.options.items():
                 if name == "item":
-                    option.choices = await self.get_item_option_choices()
+                    option.choices = await self.get_item_choices()
 
     async def user_exists(self, user: User) -> bool:
         return await self.db.users.find_one({"_id": user.id}) is not None
