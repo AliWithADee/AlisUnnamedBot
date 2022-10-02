@@ -9,6 +9,9 @@ from extensions.core.database import DatabaseCog
 from extensions.core.emojis import WALLET, BANK
 
 
+AMOUNT_DESCRIPTION = 'Any decimal, such as "1.20", a percentage, such as "50%", or "all" to specify all.'
+
+
 # Base class for certain cogs that need access to the Utils and Database cogs
 class AlisUnnamedBotCog(Cog):
     def __init__(self, bot: AlisUnnamedBot):

@@ -4,10 +4,9 @@ from nextcord import slash_command, Interaction, Embed, User, SlashOption, Colou
 
 from bot import AlisUnnamedBot
 from extensions.core.emojis import ARROW_RIGHT, WALLET, BANK, MONEY_BAG
-from extensions.core.utils import AlisUnnamedBotCog, EmbedError
+from extensions.core.utils import AlisUnnamedBotCog, EmbedError, AMOUNT_DESCRIPTION
 from extensions.user import UserDoesNotExistError
 
-AMOUNT_DESCRIPTION = 'Any decimal, such as "1.20", a percentage, such as "50%", or "all" to specify all.'
 PLEASE_PAY_US = "**:money_with_wings: #PayTheRobots :money_with_wings:**"
 
 
