@@ -1,6 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 from os import environ
-from typing import Set
+from typing import Set, Optional
 
 from bson import ObjectId, Decimal128
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -153,28 +153,24 @@ class DatabaseCog(Cog):
             }
         )
 
-    async def get_item_id(self, item_name: str):
+    async def get_item_id(self, item_name: str) -> Optional[ObjectId]:
         result = await self.db.items.find_one({"single": item_name}, {"_id": 1})
-        if result is None: return
-        return result.get("_id")
+        return result.get("_id") if result else None
 
     async def item_exists(self, item_id: ObjectId) -> bool:
         return await self.db.items.find_one({"_id": item_id}) is not None
 
     async def item_is_unique(self, item_id: ObjectId) -> bool:
-        if not await self.item_exists(item_id): return False
         result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "isUnique": 1})
-        return result.get("isUnique")
+        return result.get("isUnique") if result else False
 
-    async def get_item_single_name(self, item_id: ObjectId) -> str:
-        if not await self.item_exists(item_id): return UNKNOWN
+    async def get_item_single_name(self, item_id: ObjectId) -> Optional[str]:
         result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "single": 1})
-        return result.get("single")
+        return result.get("single") if result else None
 
-    async def get_item_plural_name(self, item_id: ObjectId) -> str:
-        if not await self.item_exists(item_id): return UNKNOWN
+    async def get_item_plural_name(self, item_id: ObjectId) -> Optional[str]:
         result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "plural": 1})
-        return result.get("plural")
+        return result.get("plural") if result else None
 
     async def get_user_item_quantity(self, user: User, item_id: ObjectId, location: int = HOME) -> int:
         if await self.item_is_unique(item_id):
