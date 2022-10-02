@@ -30,6 +30,12 @@ class InvalidCurrencyAmountError(EmbedError):
                          f"`{amount}` is not a valid amount of currency")
 
 
+class CurrencyAmountTooLowError(EmbedError):
+    def __init__(self, greater_than: int = 0):
+        super().__init__("**Invalid Argument**",
+                         f"Amount of currency must be greater than `{greater_than}`")
+
+
 class InsufficientFundsError(EmbedError):
     def __init__(self, storage: str, required_funds: str):
         super().__init__("**Insufficient Funds**",
@@ -114,6 +120,8 @@ class EconomyCog(AlisUnnamedBotCog):
 
         if withdrew < 0:
             raise InvalidCurrencyAmountError(amount)
+        if withdrew == 0:
+            raise CurrencyAmountTooLowError()
         if withdrew > bank:
             raise InsufficientBankFundsError(self.utils.to_currency_str(withdrew))
 
@@ -158,6 +166,8 @@ class EconomyCog(AlisUnnamedBotCog):
 
         if deposited < 0:
             raise InvalidCurrencyAmountError(amount)
+        if deposited == 0:
+            raise CurrencyAmountTooLowError()
         if deposited > wallet:
             raise InsufficientWalletFundsError(self.utils.to_currency_str(deposited))
 
@@ -211,6 +221,8 @@ class EconomyCog(AlisUnnamedBotCog):
 
         if transferred < 0:
             raise InvalidCurrencyAmountError(amount)
+        if transferred == 0:
+            raise CurrencyAmountTooLowError()
         if transferred > user_wallet:
             raise InsufficientWalletFundsError(self.utils.to_currency_str(transferred))
 
