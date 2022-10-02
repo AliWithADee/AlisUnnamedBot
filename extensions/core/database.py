@@ -176,14 +176,32 @@ class DatabaseCog(Cog):
         result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "plural": 1})
         return result.get("plural")
 
+    async def get_user_item_quantity(self, user: User, item_id: ObjectId, location: int = HOME) -> int:
+        if await self.item_is_unique(item_id):
+            result = await self.db.userItems.find_one(
+                {
+                    "userId": user.id,
+                    "itemId": item_id,
+                    "location": location
+                }
+            )
+            return 1 if result else 0
+        else:
+            result = await self.db.userItems.find_one(
+                {
+                    "userId": user.id,
+                    "itemId": item_id,
+                    "location": location
+                },
+                {
+                    "_id": 0,
+                    "quantity": 1
+                }
+            )
+            return result.get("quantity") if result else 0
+
     async def user_has_item(self, user: User, item_id: ObjectId, location: int = HOME) -> bool:
-        return await self.db.userItems.find_one(
-            {
-                "userId": user.id,
-                "itemId": item_id,
-                "location": location
-            }
-        ) is not None
+        return await self.get_user_item_quantity(user, item_id, location) > 0
 
     async def add_user_item(self, user: User, item_id: ObjectId, amount: int = 1, location: int = HOME):
         if amount < 1:
@@ -195,9 +213,9 @@ class DatabaseCog(Cog):
                 "location": location
             }
             items = [item.copy() for _ in range(amount)]
-            return await self.db.userItems.insert_many(items)
+            await self.db.userItems.insert_many(items)
         elif await self.user_has_item(user, item_id, location):
-            return await self.db.userItems.update_one(
+            await self.db.userItems.update_one(
                 {
                     "userId": user.id,
                     "itemId": item_id,
@@ -210,7 +228,7 @@ class DatabaseCog(Cog):
                 }
             )
         elif await self.item_exists(item_id):
-            return await self.db.userItems.insert_one(
+            await self.db.userItems.insert_one(
                 {
                     "userId": user.id,
                     "itemId": item_id,
@@ -219,11 +237,11 @@ class DatabaseCog(Cog):
                 }
             )
 
-    async def remove_user_item(self, user: User, item_id: ObjectId, amount: int = 1, location: int = HOME) -> bool:
+    async def remove_non_unique_user_item(self, user: User, item_id: ObjectId, amount: int = 1, location: int = HOME):
         if await self.item_is_unique(item_id):
-            return False
+            return
         if not await self.user_has_item(user, item_id, location):
-            return False
+            return
         if amount < 1:
             amount = 1
         result = await self.db.userItems.find_one(
@@ -239,15 +257,15 @@ class DatabaseCog(Cog):
         )
         quantity = result.get("quantity")
         if quantity == amount:
-            return await self.db.userItems.delete_one(
+            await self.db.userItems.delete_one(
                 {
                     "userId": user.id,
                     "itemId": item_id,
                     "location": location
                 }
-            ) is not None
+            )
         elif quantity > amount:
-            return await self.db.userItems.update_one(
+            await self.db.userItems.update_one(
                 {
                     "userId": user.id,
                     "itemId": item_id,
@@ -258,8 +276,7 @@ class DatabaseCog(Cog):
                         "quantity": -amount
                     }
                 }
-            ) is not None
-        return False
+            )
 
     async def get_user_inventory(self, user: User, location: int = None):
         if not location:
