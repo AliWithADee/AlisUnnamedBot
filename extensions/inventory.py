@@ -24,7 +24,6 @@ class InventoryCog(AlisUnnamedBotCog):
     @slash_command(description="View your own, or another user's, inventory.")
     async def inventory(self, inter: Interaction,
                         user: Optional[User] = SlashOption(
-                            required=False,
                             description="You may specify a user to view their inventory."
                         )):
         if not await self.database.user_exists(inter.user):
@@ -67,7 +66,6 @@ class InventoryCog(AlisUnnamedBotCog):
     @slash_command(description="View the contents of your own, or another user's, bag.")
     async def bag(self, inter: Interaction,
                   user: Optional[User] = SlashOption(
-                      required=False,
                       description="You may specify a user to view the contents of their bag."
                   )):
         if not await self.database.user_exists(inter.user):

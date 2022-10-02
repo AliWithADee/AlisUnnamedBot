@@ -67,7 +67,6 @@ class EconomyCog(AlisUnnamedBotCog):
     @slash_command(description="Check your, or another user's, balance.")
     async def balance(self, inter: Interaction,
                       user: Optional[User] = SlashOption(
-                          required=False,
                           description="You may specify a user to see their balance."
                       )):
         if not await self.database.user_exists(inter.user):

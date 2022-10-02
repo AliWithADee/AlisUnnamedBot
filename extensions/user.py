@@ -27,7 +27,6 @@ class UserCog(AlisUnnamedBotCog):
     @slash_command(description="View your own, or another user's, profile.")
     async def profile(self, inter: Interaction,
                       user: Optional[User] = SlashOption(
-                          required=False,
                           description="You may specify a user to view their profile."
                       )):
         if not await self.database.user_exists(inter.user):
@@ -54,7 +53,6 @@ class UserCog(AlisUnnamedBotCog):
     @slash_command(description="View your own, or another user's, level.")
     async def level(self, inter: Interaction,
                     user: Optional[User] = SlashOption(
-                        required=False,
                         description="You may specify a user to view their level."
                     )):
         if not await self.database.user_exists(inter.user):
