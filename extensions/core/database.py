@@ -305,6 +305,9 @@ class DatabaseCog(Cog):
     async def get_user_bag(self, user: User):
         return await self.get_user_inventory(user, BAG)
 
+    # TODO: Replace set_user_wallet() with add_user_wallet() and remove_user_wallet()
+    # TODO: Replace set_user_bank() with add_user_bank() and remove_user_bank()
+
 
 def setup(bot: AlisUnnamedBot):
     bot.logger.info("Loading Database extension...")
