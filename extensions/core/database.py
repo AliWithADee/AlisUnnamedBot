@@ -10,11 +10,10 @@ from nextcord.user import User
 
 from bot import AlisUnnamedBot
 
+
 # Inventory locations
 HOME: int = 0
 BAG: int = 1
-
-UNKNOWN = "UNKNOWN"
 
 
 # Cog to handle database services
@@ -153,9 +152,14 @@ class DatabaseCog(Cog):
             }
         )
 
+    # This is really just useful for debugging more than anything
     async def get_item_id(self, item_name: str) -> Optional[ObjectId]:
         result = await self.db.items.find_one({"single": item_name}, {"_id": 1})
         return result.get("_id") if result else None
+
+    async def get_user_item_item_id(self, user_item_id: ObjectId) -> Optional[ObjectId]:
+        result = await self.db.userItems.find_one({"_id": user_item_id}, {"itemId": 1})
+        return result.get("itemId") if result else None
 
     async def item_exists(self, item_id: ObjectId) -> bool:
         return await self.db.items.find_one({"_id": item_id}) is not None
@@ -171,6 +175,27 @@ class DatabaseCog(Cog):
     async def get_item_plural_name(self, item_id: ObjectId) -> Optional[str]:
         result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "plural": 1})
         return result.get("plural") if result else None
+
+    async def get_item_name(self, item_id: ObjectId, amount: int = 1):
+        return await self.get_item_single_name(item_id) if amount == 1 else await self.get_item_plural_name(item_id)
+
+    async def get_user_item_name(self, user_item_id: ObjectId, amount: int = 1):
+        item_id = await self.get_user_item_item_id(user_item_id)
+        if await self.item_is_unique(item_id):
+            result = await self.db.userItems.find_one(
+                {
+                    "_id": user_item_id
+                },
+                {
+                    "_id": 0,
+                    "name": 1
+                }
+            )
+            if result:
+                return result.get("name")
+            return f"{await self.get_item_single_name(item_id)} ({user_item_id})"
+        else:
+            return await self.get_item_name(item_id, amount)
 
     async def get_user_item_quantity(self, user: User, item_id: ObjectId, location: int = None) -> int:
         if await self.item_is_unique(item_id):
@@ -231,14 +256,13 @@ class DatabaseCog(Cog):
     async def user_has_item(self, user: User, item_id: ObjectId, location: int = None) -> bool:
         return await self.get_user_item_quantity(user, item_id, location) > 0
 
-    async def get_user_inventory(self, user: User, location: int = None):
-        if not location:
+    async def get_user_inventory(self, user: User, location: int = None) -> list[dict]:
+        if location is None:
             cursor = self.db.userItems.find(
                 {
                     "userId": user.id
                 },
                 {
-                    "_id": 0,
                     "userId": 0
                 }
             )
@@ -249,14 +273,37 @@ class DatabaseCog(Cog):
                     "location": location
                 },
                 {
-                    "_id": 0,
                     "userId": 0
                 }
             )
         return [item async for item in cursor]
 
-    async def get_user_bag(self, user: User):
+    async def get_user_bag(self, user: User) -> list[dict]:
         return await self.get_user_inventory(user, BAG)
+
+    async def get_specific_user_items(self, user: User, item_id: ObjectId, location: int = None):
+        if location is None:
+            cursor = self.db.userItems.find(
+                {
+                    "userId": user.id,
+                    "itemId": item_id
+                },
+                {
+                    "userId": 0
+                }
+            )
+        else:
+            cursor = self.db.userItems.find(
+                {
+                    "userId": user.id,
+                    "itemId": item_id,
+                    "location": location
+                },
+                {
+                    "userId": 0
+                }
+            )
+        return [item async for item in cursor]
 
     async def set_user_item_quantity(self, user: User, item_id: ObjectId, amount: int, location: int):
         if await self.item_is_unique(item_id):
@@ -291,6 +338,40 @@ class DatabaseCog(Cog):
                     "quantity": amount
                 }
             )
+
+    async def add_unique_user_item(self, user: User, item_id: ObjectId, location: int, amount: int = 1):
+        if not await self.item_is_unique(item_id):
+            return
+        if amount < 1:
+            amount = 1
+        item = {
+            "userId": user.id,
+            "itemId": item_id,
+            "location": location
+        }
+        items = [item.copy() for _ in range(amount)]
+        return await self.db.userItems.insert_many(items)
+
+    async def remove_unique_user_item(self, user_item_id: ObjectId):
+        item_id = await self.get_user_item_item_id(user_item_id)
+        if not await self.item_is_unique(item_id):
+            return
+        await self.db.userItems.delete_one({"_id": user_item_id})
+
+    async def set_unique_user_item_location(self, user_item_id: ObjectId, location: int):
+        item_id = await self.get_user_item_item_id(user_item_id)
+        if not await self.item_is_unique(item_id):
+            return
+        await self.db.userItems.update_one(
+            {
+                "_id": user_item_id
+            },
+            {
+                "$set": {
+                    "location": location
+                }
+            }
+        )
 
 
 def setup(bot: AlisUnnamedBot):
