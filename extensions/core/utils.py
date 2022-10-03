@@ -102,6 +102,8 @@ class UtilsCog(AlisUnnamedBotCog):
         help_command: Optional[SlashApplicationCommand] = self.bot.get_application_command_from_signature(
             "help", ApplicationCommandType.chat_input, None)
 
+        # TODO: Add user's "Bag" and inventory stuff to the welcome message
+
         embed = Embed()
         embed.title = "**Hold up there bucko!**"
         embed.colour = self.bot.config.get("colour")
