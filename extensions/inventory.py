@@ -6,6 +6,7 @@ from nextcord import slash_command, Interaction, User, SlashOption, Embed, Colou
 from bot import AlisUnnamedBot
 from extensions.core.database import BAG, HOME
 from extensions.core.emojis import BACKPACK
+from extensions.core.ui import SelectUserItemsMenu
 from extensions.core.utils import AlisUnnamedBotCog, EmbedError, ItemSlashOption, AMOUNT_DESCRIPTION
 from extensions.user import UserDoesNotExistError
 
@@ -30,10 +31,23 @@ class ItemAmountTooLowError(EmbedError):
                          f"Amount of items must be greater than `{greater_than}`")
 
 
-class InsufficientBelongings(EmbedError):
+class InsufficientBelongingsError(EmbedError):
     def __init__(self, item_name: str, amount: int):
         super().__init__("**Insufficient Belongings**",
                          f"You don't have `{amount}` **{item_name}**")
+
+
+class ItemNotFoundInBagError(EmbedError):
+    def __init__(self, item_name: str):
+        super().__init__("**Insufficient Belongings**",
+                         f"Your {BACKPACK} **Bag** does not contain any **{item_name}**!")
+
+
+class ItemNotFoundInInventoryError(EmbedError):
+    def __init__(self, item_name: str):
+        super().__init__("**Insufficient Belongings**",
+                         f"Your home inventory does not contain any **{item_name}**!\n\n"
+                         f"*The {item_name} may be in your {BACKPACK} **Bag** instead...*")
 
 
 class InventoryCog(AlisUnnamedBotCog):
@@ -56,18 +70,13 @@ class InventoryCog(AlisUnnamedBotCog):
         inventory = await self.database.get_user_inventory(user)
 
         item_list = []
-        for item in inventory:
-            item_id = item.get("itemId")
-            location = item.get("location", HOME)
-            if await self.database.item_is_unique(item_id):
-                quantity = 1
-                name = item.get("name", await self.database.get_item_single_name(item_id))
-            else:
-                quantity = item.get("quantity", 0)
-                name = await self.database.get_item_single_name(item_id) if quantity == 1 \
-                    else await self.database.get_item_plural_name(item_id)
-
+        for user_item in inventory:
+            user_item_id = user_item.get("_id")
+            item_id = user_item.get("itemId")
+            location = user_item.get("location", HOME)
+            quantity = 1 if await self.database.item_is_unique(item_id) else user_item.get("quantity", 0)
             if quantity > 0:
+                name = await self.database.get_user_item_name(user_item_id, quantity)
                 item_desc = f"`{quantity}` **{name}**"
                 item_list.append(item_desc + f" {IN_BAG}" if location == BAG else item_desc)
 
@@ -99,17 +108,12 @@ class InventoryCog(AlisUnnamedBotCog):
         bag = await self.database.get_user_bag(user)
 
         item_list = []
-        for item in bag:
-            item_id = item.get("itemId")
-            if await self.database.item_is_unique(item_id):
-                quantity = 1
-                name = item.get("name", await self.database.get_item_single_name(item_id))
-            else:
-                quantity = item.get("quantity", 0)
-                name = await self.database.get_item_single_name(item_id) if quantity == 1 \
-                    else await self.database.get_item_plural_name(item_id)
-
+        for user_item in bag:
+            user_item_id = user_item.get("_id")
+            item_id = user_item.get("itemId")
+            quantity = 1 if await self.database.item_is_unique(item_id) else user_item.get("quantity", 0)
             if quantity > 0:
+                name = await self.database.get_user_item_name(user_item_id, quantity)
                 item_list.append(f"`{quantity}` **{name}**")
 
         if item_list:
@@ -126,100 +130,167 @@ class InventoryCog(AlisUnnamedBotCog):
 
     @slash_command(description="Transfer items from your inventory to your bag.")
     async def bring(self, inter: Interaction,
-                    amount: str = SlashOption(
-                        description=AMOUNT_DESCRIPTION
-                    ),
                     item_id_string: str = ItemSlashOption(
                         description="The item you wish to bring with you."
+                    ),
+                    amount: Optional[str] = SlashOption(
+                        description=AMOUNT_DESCRIPTION,
+                        default="0"
                     )):
         user = inter.user
         if not await self.database.user_exists(user):
             return await self.utils.add_and_welcome_new_user(inter, user)
 
         item_id = ObjectId(item_id_string)
-        total_quantity = await self.database.get_user_item_quantity(user, item_id)
-
-        if amount.lower() == "all":
-            brought = total_quantity
-        elif self.utils.is_int(amount):
-            brought = int(amount)
-        elif self.utils.is_percentage(amount):
-            multiplier = self.utils.to_decimal(amount.replace("%", "")) / 100
-            brought = int(total_quantity * multiplier)
-        else:
-            raise InvalidItemAmountError(amount)
-
-        item_name = await self.database.get_item_single_name(item_id) if brought == 1 \
-            else await self.database.get_item_plural_name(item_id)
-
-        if brought < 0:
-            raise InvalidItemAmountError(amount)
-        if brought == 0:
-            raise ItemAmountTooLowError()
-        if brought > total_quantity:
-            raise InsufficientBelongings(item_name, brought)
 
         if await self.database.item_is_unique(item_id):
-            await inter.send(f"Pick which {item_name} to bring...")
+            home_items = await self.database.get_specific_user_items(user, item_id, HOME)
+            if not home_items:
+                item_plural_name = await self.database.get_item_plural_name(item_id)
+                raise ItemNotFoundInInventoryError(item_plural_name)
+            elif amount.lower() == "all":
+                await self.bring_selected_items(inter, home_items)
+            else:
+                await SelectUserItemsMenu.create(original_inter=inter, items=home_items,
+                                                 callback=self.bring_selected_items,
+                                                 database=self.database)
         else:
+            total_quantity = await self.database.get_user_item_quantity(user, item_id)
+
+            if amount.lower() == "all":
+                brought = total_quantity
+            elif self.utils.is_int(amount):
+                brought = int(amount)
+            elif self.utils.is_percentage(amount):
+                multiplier = self.utils.to_decimal(amount.replace("%", "")) / 100
+                brought = int(total_quantity * multiplier)
+            else:
+                raise InvalidItemAmountError(amount)
+
+            item_name = await self.database.get_item_name(item_id, brought)
+
+            if brought < 0:
+                raise InvalidItemAmountError(amount)
+            if brought == 0:
+                raise ItemAmountTooLowError()
+            if brought > total_quantity:
+                raise InsufficientBelongingsError(item_name, brought)
+
             in_bag = brought
             at_home = total_quantity - in_bag
+            item_name_at_home = await self.database.get_item_name(item_id, at_home)
+
             await self.database.set_user_item_quantity(user, item_id, in_bag, BAG)
             await self.database.set_user_item_quantity(user, item_id, at_home, HOME)
 
             embed = Embed()
             embed.colour = Colour.dark_red()
-            embed.description = f"Your {BACKPACK} **Bag** now contains `{in_bag}` **{item_name}**\n\n"\
-                                f"You have `{at_home}` **{item_name}** left in your inventory"
+            embed.description = f"You added `{in_bag}` **{item_name}** to your {BACKPACK} **Bag**\n\n" \
+                                f"You left `{at_home}` **{item_name_at_home}** in your home inventory"
+            await inter.send(embed=embed)
+
+    async def bring_selected_items(self, inter: Interaction, selected_items: list[dict]):
+        brought_items = selected_items
+        if brought_items:
+            brought_item_names = []
+            for user_item in brought_items:
+                user_item_id = user_item.get("_id")
+                await self.database.set_unique_user_item_location(user_item_id, BAG)
+                user_item_name = await self.database.get_user_item_name(user_item_id)
+                brought_item_names.append(f"**{user_item_name}**")
+            embed = Embed()
+            embed.colour = Colour.dark_red()
+            embed.description = f"You added the following items to your {BACKPACK} **Bag**:\n\n" \
+                                f"- " + "\n- ".join(brought_item_names)
+            await inter.send(embed=embed)
+        else:
+            embed = Embed()
+            embed.colour = Colour.dark_red()
+            embed.title = "**No Items Were Selected**"
+            embed.description = f"*No changes were made to your inventory...*"
             await inter.send(embed=embed)
 
     @slash_command(description="Transfer items from your bag to your inventory.")
-    async def leave_behind(self, inter: Interaction,
-                           amount: str = SlashOption(
-                               description=AMOUNT_DESCRIPTION
-                           ),
-                           item_id_string: str = ItemSlashOption(
-                               description="The item you wish to leave behind."
-                           )):
+    async def leave(self, inter: Interaction,
+                    item_id_string: str = ItemSlashOption(
+                        description="The item you wish to leave behind."
+                    ),
+                    amount: Optional[str] = SlashOption(
+                        description=AMOUNT_DESCRIPTION,
+                        default="0"
+                    )):
         user = inter.user
         if not await self.database.user_exists(user):
             return await self.utils.add_and_welcome_new_user(inter, user)
 
         item_id = ObjectId(item_id_string)
-        total_quantity = await self.database.get_user_item_quantity(user, item_id)
-
-        if amount.lower() == "all":
-            left_behind = total_quantity
-        elif self.utils.is_int(amount):
-            left_behind = int(amount)
-        elif self.utils.is_percentage(amount):
-            multiplier = self.utils.to_decimal(amount.replace("%", "")) / 100
-            left_behind = int(total_quantity * multiplier)
-        else:
-            raise InvalidItemAmountError(amount)
-
-        item_name = await self.database.get_item_single_name(item_id) if left_behind == 1 \
-            else await self.database.get_item_plural_name(item_id)
-
-        if left_behind < 0:
-            raise InvalidItemAmountError(amount)
-        if left_behind == 0:
-            raise ItemAmountTooLowError()
-        if left_behind > total_quantity:
-            raise InsufficientBelongings(item_name, left_behind)
 
         if await self.database.item_is_unique(item_id):
-            await inter.send(f"Pick which {item_name} to leave behind...")
+            bag_items = await self.database.get_specific_user_items(user, item_id, BAG)
+            if not bag_items:
+                item_plural_name = await self.database.get_item_plural_name(item_id)
+                raise ItemNotFoundInBagError(item_plural_name)
+            elif amount.lower() == "all":
+                await self.leave_selected_items(inter, bag_items)
+            else:
+                await SelectUserItemsMenu.create(original_inter=inter, items=bag_items,
+                                                 callback=self.leave_selected_items,
+                                                 database=self.database)
         else:
-            at_home = left_behind
+            total_quantity = await self.database.get_user_item_quantity(user, item_id)
+
+            if amount.lower() == "all":
+                left = total_quantity
+            elif self.utils.is_int(amount):
+                left = int(amount)
+            elif self.utils.is_percentage(amount):
+                multiplier = self.utils.to_decimal(amount.replace("%", "")) / 100
+                left = int(total_quantity * multiplier)
+            else:
+                raise InvalidItemAmountError(amount)
+
+            item_name = await self.database.get_item_name(item_id, left)
+
+            if left < 0:
+                raise InvalidItemAmountError(amount)
+            if left == 0:
+                raise ItemAmountTooLowError()
+            if left > total_quantity:
+                raise InsufficientBelongingsError(item_name, left)
+
+            at_home = left
             in_bag = total_quantity - at_home
+            item_name_in_bag = await self.database.get_item_name(item_id, in_bag)
+
             await self.database.set_user_item_quantity(user, item_id, at_home, HOME)
             await self.database.set_user_item_quantity(user, item_id, in_bag, BAG)
 
             embed = Embed()
             embed.colour = Colour.dark_red()
-            embed.description = f"Your {BACKPACK} **Bag** now contains `{in_bag}` **{item_name}**\n\n" \
-                                f"You have `{at_home}` **{item_name}** left in your inventory"
+            embed.description = f"You left `{at_home}` **{item_name}** in your home inventory\n\n"\
+                                f"You kept `{in_bag}` **{item_name_in_bag}** in your {BACKPACK} **Bag**"
+
+            await inter.send(embed=embed)
+
+    async def leave_selected_items(self, inter: Interaction, selected_items: list[dict]):
+        left_items = selected_items
+        if left_items:
+            left_item_names = []
+            for user_item in left_items:
+                user_item_id = user_item.get("_id")
+                await self.database.set_unique_user_item_location(user_item_id, HOME)
+                user_item_name = await self.database.get_user_item_name(user_item_id)
+                left_item_names.append(f"**{user_item_name}**")
+            embed = Embed()
+            embed.colour = Colour.dark_red()
+            embed.description = f"You left the following items in your home inventory:\n\n" \
+                                f"- " + "\n- ".join(left_item_names)
+            await inter.send(embed=embed)
+        else:
+            embed = Embed()
+            embed.colour = Colour.dark_red()
+            embed.title = "**No Items Were Selected**"
+            embed.description = f"*No changes were made to your inventory...*"
             await inter.send(embed=embed)
 
 
