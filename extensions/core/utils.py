@@ -30,6 +30,12 @@ class EmbedError(Exception):
         super().__init__(embed_desc.replace("*", "").replace("`", "'"))
 
 
+# Exactly the same as EmbedError, but is sent with ephemeral=True when caught by the bot events cog
+class HiddenEmbedError(EmbedError):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
 # Class that extends SlashOption and sets the "name" attribute to be "item"
 # so that this SlashOption is picked up by "setup_item_slash_option_choices()" function in the database cog
 class ItemSlashOption(SlashOption):

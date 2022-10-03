@@ -3,7 +3,7 @@ from nextcord.ext.application_checks import ApplicationNotOwner
 from nextcord.ext.commands import Cog
 
 from bot import AlisUnnamedBot
-from extensions.core.utils import EmbedError
+from extensions.core.utils import EmbedError, HiddenEmbedError
 from extensions.core.emojis import CROSS
 
 
@@ -20,7 +20,8 @@ class BotEventsCog(Cog):
                 error_embed.title = error.original.embed_title
                 error_embed.colour = error.original.embed_colour
                 error_embed.description = f"{CROSS} {error.original.embed_desc}"
-                await inter.send(embed=error_embed)
+                ephemeral = isinstance(error.original, HiddenEmbedError)
+                await inter.send(embed=error_embed, ephemeral=ephemeral)
         elif isinstance(error, ApplicationNotOwner):
             error_embed.title = "**Missing Permissions**"
             error_embed.colour = Colour.red()
