@@ -30,8 +30,8 @@ class SelectUserItemsMenu(View):
         self.current_index = 0
         self.selected_items = []
 
-        self.add_item(ButtonLeft(self))
-        self.add_item(ButtonRight(self))
+        self.add_item(ButtonPrevious(self))
+        self.add_item(ButtonNext(self))
         self.button_select = ButtonSelect(self)
         self.add_item(self.button_select)
         self.add_item(ButtonConfirm(self))
@@ -55,6 +55,10 @@ class SelectUserItemsMenu(View):
         user_item_id = user_item.get("_id")
         name = await self.database.get_user_item_name(user_item_id)
 
+        # TODO: Improve item display in SelectUserItemsMenu. Eg: Add "item #1 out of 12 items" etc
+        # TODO: Add "Cancel" button?
+        # TODO: Add "Select All" button
+
         embed = Embed()
         embed.title = name
         embed.colour = Colour.dark_blue()
@@ -67,16 +71,16 @@ class SelectUserItemsMenu(View):
                 item.disabled = True
         await self.original_inter.edit_original_message(view=self)
 
-    async def on_button_left(self):
-        new_index = self.current_index - 1
-        if new_index >= 0:
-            self.current_index = new_index
+    async def on_button_previous(self):
+        previous_index = self.current_index - 1
+        if previous_index >= 0:
+            self.current_index = previous_index
             await self.update_menu()
 
-    async def on_button_right(self):
-        new_index = self.current_index + 1
-        if new_index < len(self.user_items):
-            self.current_index = new_index
+    async def on_button_next(self):
+        next_index = self.current_index + 1
+        if next_index < len(self.user_items):
+            self.current_index = next_index
             await self.update_menu()
 
     async def on_button_select(self):
@@ -95,26 +99,26 @@ class SelectUserItemsMenu(View):
         await self.disable_buttons()
 
 
-class ButtonLeft(Button):
+class ButtonPrevious(Button):
     def __init__(self, menu: SelectUserItemsMenu, **kwargs):
-        super().__init__(**kwargs, label="Left")
+        super().__init__(**kwargs, label="Previous")  # TODO: Add arrows to "Next" and "Previous" buttons
         self.menu = menu
 
     async def callback(self, inter: Interaction):
         if self.menu.original_inter.user.id != inter.user.id:
             return await inter.send(embed=NotMenuOwnerEmbed(), ephemeral=True)
-        await self.menu.on_button_left()
+        await self.menu.on_button_previous()
 
 
-class ButtonRight(Button):
+class ButtonNext(Button):
     def __init__(self, menu: SelectUserItemsMenu, **kwargs):
-        super().__init__(**kwargs, label="Right")
+        super().__init__(**kwargs, label="Next")  # TODO: Add arrows to "Next" and "Previous" buttons
         self.menu = menu
 
     async def callback(self, inter: Interaction):
         if self.menu.original_inter.user.id != inter.user.id:
             return await inter.send(embed=NotMenuOwnerEmbed(), ephemeral=True)
-        await self.menu.on_button_right()
+        await self.menu.on_button_next()
 
 
 class ButtonSelect(Button):
