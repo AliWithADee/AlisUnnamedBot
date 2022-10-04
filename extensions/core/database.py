@@ -281,7 +281,7 @@ class DatabaseCog(Cog):
     async def get_user_bag(self, user: User) -> list[dict]:
         return await self.get_user_inventory(user, BAG)
 
-    async def get_specific_user_items(self, user: User, item_id: ObjectId, location: int = None):
+    async def get_specific_user_items(self, user: User, item_id: ObjectId, location: int = None) -> list[ObjectId]:
         if location is None:
             cursor = self.db.userItems.find(
                 {
@@ -289,7 +289,7 @@ class DatabaseCog(Cog):
                     "itemId": item_id
                 },
                 {
-                    "userId": 0
+                    "_id": 1
                 }
             )
         else:
@@ -300,10 +300,10 @@ class DatabaseCog(Cog):
                     "location": location
                 },
                 {
-                    "userId": 0
+                    "_id": 1
                 }
             )
-        return [item async for item in cursor]
+        return [item.get("_id") async for item in cursor]
 
     async def set_user_item_quantity(self, user: User, item_id: ObjectId, amount: int, location: int):
         if await self.item_is_unique(item_id):
