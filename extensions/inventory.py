@@ -144,16 +144,17 @@ class InventoryCog(AlisUnnamedBotCog):
         item_id = ObjectId(item_id_string)
 
         if await self.database.item_is_unique(item_id):
+            item_plural_name = await self.database.get_item_plural_name(item_id)
             home_items = await self.database.get_specific_user_items(user, item_id, HOME)
             if not home_items:
-                item_plural_name = await self.database.get_item_plural_name(item_id)
                 raise ItemNotFoundInInventoryError(item_plural_name)
             elif amount.lower() == "all":
                 await self.bring_selected_items(inter, home_items)
             else:
-                await SelectUserItemsMenu.create(original_inter=inter, items=home_items,
-                                                 callback=self.bring_selected_items,
-                                                 database=self.database)
+                menu = SelectUserItemsMenu(user_items=home_items, callback=self.bring_selected_items,
+                                           title=f"Select {item_plural_name}",
+                                           original_inter=inter, database=self.database)
+                await menu.send_or_update_menu()
         else:
             total_quantity = await self.database.get_user_item_quantity(user, item_id)
 
@@ -189,12 +190,11 @@ class InventoryCog(AlisUnnamedBotCog):
                                 f"You left `{at_home}` **{item_name_at_home}** in your home inventory"
             await inter.send(embed=embed)
 
-    async def bring_selected_items(self, inter: Interaction, selected_items: list[dict]):
+    async def bring_selected_items(self, inter: Interaction, selected_items: list[ObjectId]):
         brought_items = selected_items
         if brought_items:
             brought_item_names = []
-            for user_item in brought_items:
-                user_item_id = user_item.get("_id")
+            for user_item_id in brought_items:
                 await self.database.set_unique_user_item_location(user_item_id, BAG)
                 user_item_name = await self.database.get_user_item_name(user_item_id)
                 brought_item_names.append(f"**{user_item_name}**")
@@ -226,16 +226,17 @@ class InventoryCog(AlisUnnamedBotCog):
         item_id = ObjectId(item_id_string)
 
         if await self.database.item_is_unique(item_id):
+            item_plural_name = await self.database.get_item_plural_name(item_id)
             bag_items = await self.database.get_specific_user_items(user, item_id, BAG)
             if not bag_items:
-                item_plural_name = await self.database.get_item_plural_name(item_id)
                 raise ItemNotFoundInBagError(item_plural_name)
             elif amount.lower() == "all":
                 await self.leave_selected_items(inter, bag_items)
             else:
-                await SelectUserItemsMenu.create(original_inter=inter, items=bag_items,
-                                                 callback=self.leave_selected_items,
-                                                 database=self.database)
+                menu = SelectUserItemsMenu(user_items=bag_items, callback=self.leave_selected_items,
+                                           title=f"Select {item_plural_name}",
+                                           original_inter=inter, database=self.database)
+                await menu.send_or_update_menu()
         else:
             total_quantity = await self.database.get_user_item_quantity(user, item_id)
 
@@ -267,17 +268,16 @@ class InventoryCog(AlisUnnamedBotCog):
 
             embed = Embed()
             embed.colour = Colour.dark_red()
-            embed.description = f"You left `{at_home}` **{item_name}** in your home inventory\n\n"\
+            embed.description = f"You left `{at_home}` **{item_name}** in your home inventory\n\n" \
                                 f"You kept `{in_bag}` **{item_name_in_bag}** in your {BACKPACK} **Bag**"
 
             await inter.send(embed=embed)
 
-    async def leave_selected_items(self, inter: Interaction, selected_items: list[dict]):
+    async def leave_selected_items(self, inter: Interaction, selected_items: list[ObjectId]):
         left_items = selected_items
         if left_items:
             left_item_names = []
-            for user_item in left_items:
-                user_item_id = user_item.get("_id")
+            for user_item_id in left_items:
                 await self.database.set_unique_user_item_location(user_item_id, HOME)
                 user_item_name = await self.database.get_user_item_name(user_item_id)
                 left_item_names.append(f"**{user_item_name}**")
