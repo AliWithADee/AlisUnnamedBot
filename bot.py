@@ -42,7 +42,6 @@ class AlisUnnamedBot(Bot):
 
     def load_config(self) -> bool:
         if not os.path.isfile(self.config_path) and self.config_path.endswith(".json"):
-            self.logger.error("Bot config is not a JSON file")
             return False
         with open(self.config_path, "r", encoding="utf-8") as file:
             self.config = json.load(file)
