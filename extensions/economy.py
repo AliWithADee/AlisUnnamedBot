@@ -3,7 +3,7 @@ from typing import Optional
 from nextcord import slash_command, Interaction, Embed, User, SlashOption, Colour
 
 from bot import AlisUnnamedBot
-from extensions.core.emojis import ARROW_RIGHT, WALLET, BANK, MONEY_BAG
+from extensions.core.emojis import ARROW_RIGHT_ANIMATED, WALLET, BANK, MONEY_BAG
 from extensions.core.utils import AlisUnnamedBotCog, EmbedError, AMOUNT_DESCRIPTION
 from extensions.user import UserDoesNotExistError
 
@@ -236,8 +236,8 @@ class EconomyCog(AlisUnnamedBotCog):
         embed = Embed()
         embed.title = f"**Payment**"
         embed.colour = Colour.green()
-        embed.description = f"**{user.name} {ARROW_RIGHT} `{self.utils.to_currency_str(transferred)}` " \
-                            f"{ARROW_RIGHT} {recipient.name}**\n\n" \
+        embed.description = f"**{user.name} {ARROW_RIGHT_ANIMATED} `{self.utils.to_currency_str(transferred)}` " \
+                            f"{ARROW_RIGHT_ANIMATED} {recipient.name}**\n\n" \
                             f"**{user.mention}'s {WALLET} Wallet: `{self.utils.to_currency_str(new_user_wallet)}`**\n" \
                             f"**{recipient.mention}'s {WALLET} Wallet: `{self.utils.to_currency_str(new_recipient_wallet)}`**"
         await inter.send(embed=embed)
