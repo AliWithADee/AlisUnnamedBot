@@ -101,6 +101,9 @@ class UtilsCog(AlisUnnamedBotCog):
         help_command: Optional[SlashApplicationCommand] = self.bot.get_application_command_from_signature(
             "help", ApplicationCommandType.chat_input, None)
 
+        # TODO: Rewrite welcome message. Have wallet be inside the bag.
+        # TODO: Random opening welcome message from a list.
+
         embed = Embed()
         embed.title = "**Hold up there bucko!**"
         embed.colour = self.bot.config.get("colour")
