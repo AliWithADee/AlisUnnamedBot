@@ -6,8 +6,7 @@ from nextcord.ext.commands import Cog
 
 from bot import AlisUnnamedBot
 from extensions.core.database import DatabaseCog
-from extensions.core.emojis import WALLET, BANK
-
+from extensions.core.emojis import WALLET, BANK, BACKPACK
 
 AMOUNT_DESCRIPTION = 'Any decimal, such as "1.20", a percentage, such as "50%", or "all" to specify all.'
 
@@ -102,8 +101,6 @@ class UtilsCog(AlisUnnamedBotCog):
         help_command: Optional[SlashApplicationCommand] = self.bot.get_application_command_from_signature(
             "help", ApplicationCommandType.chat_input, None)
 
-        # TODO: Add user's "Bag" and inventory stuff to the welcome message
-
         embed = Embed()
         embed.title = "**Hold up there bucko!**"
         embed.colour = self.bot.config.get("colour")
@@ -115,7 +112,8 @@ class UtilsCog(AlisUnnamedBotCog):
                             f"- You received a {WALLET} **Wallet** containing " \
                             f"`{self.to_currency_str(wallet)}`!\n" \
                             f"- You received a {BANK} **Bank Account** with a capacity of " \
-                            f"`{self.to_currency_str(bank_capacity)}`!\n\n" \
+                            f"`{self.to_currency_str(bank_capacity)}`!\n" \
+                            f"- You received an empty {BACKPACK} **Bag** to store your belongings!\n\n" \
                             f"**Consider using the {help_command.get_mention()} command for more information.**"
         await inter.send(embed=embed)
 
