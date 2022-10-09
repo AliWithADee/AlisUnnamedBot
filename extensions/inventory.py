@@ -151,9 +151,8 @@ class InventoryCog(AlisUnnamedBotCog):
             elif amount.lower() == "all":
                 await self.bring_selected_items(inter, home_items)
             else:
-                menu = SelectUserItemsMenu(user_items=home_items, callback=self.bring_selected_items,
-                                           title=f"Select {item_plural_name}",
-                                           original_inter=inter, database=self.database)
+                menu = SelectUserItemsMenu(item_id=item_id, user_items=home_items, callback=self.bring_selected_items,
+                                           original_inter=inter, bot=self.bot, database=self.database)
                 await menu.send_or_update_menu()
         else:
             total_quantity = await self.database.get_user_item_quantity(user, item_id)
@@ -233,9 +232,8 @@ class InventoryCog(AlisUnnamedBotCog):
             elif amount.lower() == "all":
                 await self.leave_selected_items(inter, bag_items)
             else:
-                menu = SelectUserItemsMenu(user_items=bag_items, callback=self.leave_selected_items,
-                                           title=f"Select {item_plural_name}",
-                                           original_inter=inter, database=self.database)
+                menu = SelectUserItemsMenu(item_id=item_id, user_items=bag_items, callback=self.leave_selected_items,
+                                           original_inter=inter, bot=self.bot, database=self.database)
                 await menu.send_or_update_menu()
         else:
             total_quantity = await self.database.get_user_item_quantity(user, item_id)

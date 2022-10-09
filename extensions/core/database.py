@@ -152,21 +152,29 @@ class DatabaseCog(Cog):
             }
         )
 
+    # ===========
+    # Item Types
+    # ===========
+
+    async def get_item_type_name(self, item_type_id: ObjectId) -> Optional[str]:
+        result = await self.db.itemTypes.find_one({"_id": item_type_id}, {"_id": 0, "name": 1})
+        return result.get("name") if result else None
+
+    async def get_item_type_properties(self, item_type_id: ObjectId) -> Optional[dict]:
+        result = await self.db.itemTypes.find_one({"_id": item_type_id}, {"_id": 0, "properties": 1})
+        return result.get("properties") if result else None
+
+    # ===========
+    # Items
+    # ===========
+
     # This is really just useful for debugging more than anything
     async def get_item_id(self, item_name: str) -> Optional[ObjectId]:
         result = await self.db.items.find_one({"single": item_name}, {"_id": 1})
         return result.get("_id") if result else None
 
-    async def get_user_item_item_id(self, user_item_id: ObjectId) -> Optional[ObjectId]:
-        result = await self.db.userItems.find_one({"_id": user_item_id}, {"itemId": 1})
-        return result.get("itemId") if result else None
-
     async def item_exists(self, item_id: ObjectId) -> bool:
         return await self.db.items.find_one({"_id": item_id}) is not None
-
-    async def item_is_unique(self, item_id: ObjectId) -> bool:
-        result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "isUnique": 1})
-        return result.get("isUnique") if result else False
 
     async def get_item_single_name(self, item_id: ObjectId) -> Optional[str]:
         result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "single": 1})
@@ -178,6 +186,56 @@ class DatabaseCog(Cog):
 
     async def get_item_name(self, item_id: ObjectId, amount: int = 1):
         return await self.get_item_single_name(item_id) if amount == 1 else await self.get_item_plural_name(item_id)
+
+    async def get_item_type_id(self, item_id: ObjectId) -> Optional[ObjectId]:
+        result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "itemTypeId": 1})
+        return result.get("itemTypeId") if result else None
+
+    async def item_is_unique(self, item_id: ObjectId) -> bool:
+        result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "isUnique": 1})
+        return result.get("isUnique") if result else False
+
+    # Merges new_props onto old_props
+    # Values from new_props will take priority over values in old_props
+    def merge_properties(self, old_props: dict, new_props: dict) -> dict:
+        # List of keys from both dictionaries (no duplicates)
+        keys = list(old_props.keys()) + list(set(new_props.keys()) - set(old_props.keys()))
+        out = {}
+        for key in keys:
+            if key in old_props and key in new_props:
+                old = old_props[key]  # Original value
+                new = new_props[key]  # New value
+                if isinstance(old, dict) and isinstance(new, dict):
+                    out[key] = self.merge_properties(old, new)
+                else:
+                    out[key] = new  # New value takes priority / overrides old value
+            elif key in old_props:
+                out[key] = old_props[key]
+            else:
+                out[key] = new_props[key]
+        return out
+
+    async def get_item_properties(self, item_id: ObjectId) -> Optional[dict]:
+        item_type_id = await self.get_item_type_id(item_id)
+        item_type_properties = await self.get_item_type_properties(item_type_id)
+        result = await self.db.items.find_one({"_id": item_id}, {"_id": 0, "properties": 1})
+        item_properties = result.get("properties") if result else None
+        if item_type_properties and item_properties:
+            return self.merge_properties(item_type_properties, item_properties)
+        else:
+            return item_properties if item_properties else item_type_properties
+
+    # ===========
+    # User Items
+    # ===========
+
+    async def get_user_item_item_id(self, user_item_id: ObjectId) -> Optional[ObjectId]:
+        result = await self.db.userItems.find_one({"_id": user_item_id}, {"itemId": 1})
+        return result.get("itemId") if result else None
+
+    async def get_user_item_type_id(self, user_item_id: ObjectId) -> Optional[ObjectId]:
+        item_id = await self.get_user_item_item_id(user_item_id)
+        return await self.get_item_type_id(item_id)
 
     async def get_user_item_name(self, user_item_id: ObjectId, amount: int = 1):
         item_id = await self.get_user_item_item_id(user_item_id)
@@ -252,6 +310,16 @@ class DatabaseCog(Cog):
                 if bag:
                     quantity += bag.get("quantity")
             return quantity
+
+    async def get_user_item_properties(self, user_item_id: ObjectId) -> dict:
+        item_id = await self.get_user_item_item_id(user_item_id)
+        item_properties = await self.get_item_properties(item_id)
+        result = await self.db.userItems.find_one({"_id": user_item_id}, {"_id": 0, "properties": 1})
+        user_item_properties = result.get("properties") if result else None
+        if item_properties and user_item_properties:
+            return self.merge_properties(item_properties, user_item_properties)
+        else:
+            return user_item_properties if user_item_properties else item_properties
 
     async def user_has_item(self, user: User, item_id: ObjectId, location: int = None) -> bool:
         return await self.get_user_item_quantity(user, item_id, location) > 0
@@ -344,6 +412,12 @@ class DatabaseCog(Cog):
             return
         if amount < 1:
             amount = 1
+        max_unique_items = self.bot.config.get("max_unique_items")
+        quantity = await self.get_user_item_quantity(user, item_id)
+        if quantity >= max_unique_items:
+            return
+        if quantity + amount > max_unique_items:
+            amount = max_unique_items - quantity
         item = {
             "userId": user.id,
             "itemId": item_id,

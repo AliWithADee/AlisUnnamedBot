@@ -8,5 +8,6 @@
   "currency_name": "money",
   "currency_symbol": "£",
   "new_user_wallet": 250,
-  "new_user_bank_cap": 10000
+  "new_user_bank_cap": 10000,
+  "max_unique_items": 25
 }
