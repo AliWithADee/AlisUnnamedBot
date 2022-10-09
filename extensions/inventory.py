@@ -135,7 +135,7 @@ class InventoryCog(AlisUnnamedBotCog):
                     ),
                     amount: Optional[str] = SlashOption(
                         description=AMOUNT_DESCRIPTION,
-                        default="0"
+                        default="1"
                     )):
         user = inter.user
         if not await self.database.user_exists(user):
@@ -216,7 +216,7 @@ class InventoryCog(AlisUnnamedBotCog):
                     ),
                     amount: Optional[str] = SlashOption(
                         description=AMOUNT_DESCRIPTION,
-                        default="0"
+                        default="1"
                     )):
         user = inter.user
         if not await self.database.user_exists(user):
