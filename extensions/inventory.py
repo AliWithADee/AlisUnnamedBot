@@ -83,8 +83,8 @@ class InventoryCog(AlisUnnamedBotCog):
         if item_list:
             embed_desc = "- " + "\n- ".join(item_list)
         else:
-            subject = "Your" if user.id == inter.user.id else f"{user.mention}'s"
-            embed_desc = f"*{subject} inventory is empty*"
+            subject = "You don't" if user.id == inter.user.id else f"{user.mention} doesn't"
+            embed_desc = f"*{subject} own any items*"
 
         embed = Embed()
         embed.set_author(name=f"{user.name}'s Inventory", icon_url=user.avatar.url)
